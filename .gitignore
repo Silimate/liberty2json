@@ -47,3 +47,6 @@ src/token.c
 
 # Test files
 *.test.json
+
+# Mac junk
+.DS_Store
