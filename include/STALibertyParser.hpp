@@ -20,6 +20,8 @@
 
 #include <fstream>
 #include <string>
+#include <optional>
+
 #include "json.hpp"
 #include "LibertyParser.hpp"
 #include "Report.hh"
