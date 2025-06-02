@@ -30,8 +30,9 @@ class Visitor;
 
 // C++ wrapper for Synopsys Liberty parser
 class STALibertyParser : public LibertyParser, public sta::Report {
-		Visitor *visitor;
-		std::string filename;
+		Visitor *visitor_;
+		std::string filename_;
+		std::optional<std::string> err_ = std::nullopt;
 	public:
 		STALibertyParser(string filename);
 		
@@ -42,5 +43,7 @@ class STALibertyParser : public LibertyParser, public sta::Report {
 		virtual json as_json() override;
 		virtual void to_json_file(std::string filename, bool indent) override;
 		
+	protected:
 		// sta::Report
+		virtual size_t printConsole(const char *buffer, size_t length) override;
 };

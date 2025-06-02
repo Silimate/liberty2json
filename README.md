@@ -11,7 +11,7 @@ OpenSTA liberty parser for maximum speed and compatibility.
 
 ## Building and Testing
 
-To be documented. See `.github/workflows/ci.yml` for now.
+See [INSTALLING.md](./INSTALLING.md).
 
 ## License
 

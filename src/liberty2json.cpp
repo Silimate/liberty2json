@@ -31,7 +31,7 @@ int main(int argc, char *argv[]) {
   argparse::ArgumentParser program("liberty2json");
   program.add_argument("filename").help("name of the Liberty file to parse");
 	program.add_argument("--outfile").help("name of the output JSON file");
-	program.add_argument("--check").help("check the Liberty file for errors").flag();
+	program.add_argument("--check").help("check the Liberty file for errors only and exit").flag();
 	program.add_argument("--debug").help("enable debug mode").flag();
 	program.add_argument("--indent").help("enable indentation in file output").flag();
   try {
@@ -51,8 +51,12 @@ int main(int argc, char *argv[]) {
 		sta->makeComponents();
 		
 		LibertyParser *parser = dynamic_cast<LibertyParser *>(new STALibertyParser(program.get<std::string>("filename")));;
+		if (parser->check()) {
+			std::cerr << "ERROR: " << parser->get_error_text() << std::endl;
+			return 1;
+		}
 		if (program.get<bool>("--check")) {
-			parser->check();
+			return 0;
 		}
 		if (program.is_used("--outfile")) {
 			parser->to_json_file(program.get<std::string>("--outfile"), (program.get<bool>("--indent")));

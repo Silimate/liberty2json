@@ -113,6 +113,7 @@ def flatten(dict_in: dict, dict_out: Optional[dict] = None, keypath=""):
 
 @pytest.mark.parametrize("au", pytest.tests)
 def test_lib(au: str):
+    au = str(pytest.test_root / au)
     dotlib = au.replace(".ref.json", ".lib")
     got = au.replace(".ref.json", ".test.json")
     result = subprocess.run(

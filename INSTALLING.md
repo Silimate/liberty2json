@@ -4,7 +4,7 @@ First of all, clone the repo recursively…
 
 ```bash
 cd ~
-git clone --recursive https://github.com/silimate/liberty2json
+git clone --recursive https://github.com/silimate/liberty2json-sta
 ```
 
 ## Ubuntu 22.04+

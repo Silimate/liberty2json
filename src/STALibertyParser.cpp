@@ -17,6 +17,8 @@
 		along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include "LibertyParser.hh"
+#include "Sta.hh"
+
 #include "STALibertyParser.hpp" 
 #include <iostream>
 #include <stack>
@@ -152,7 +154,7 @@ class Visitor: public LibertyGroupVisitor {
 					top[attr_ptr] = value->stringValue();
 				}
 			} else {
-				std::cout << attr->name() << std::endl;
+				throw std::runtime_error(std::string("Unhandled attribute ") + attr->name());
 			}
 		}
 	}
@@ -174,28 +176,32 @@ class Visitor: public LibertyGroupVisitor {
   bool save(LibertyVariable *variable) { return true; }
 };
 
-STALibertyParser::STALibertyParser(std::string filename): filename(filename) {
-	visitor = new Visitor();
-	parseLibertyFile(filename.c_str(), visitor, this);
+STALibertyParser::STALibertyParser(std::string filename): filename_(filename) {
+	visitor_ = new Visitor();
+	try {
+		parseLibertyFile(filename_.c_str(), visitor_, this);
+	} catch (sta::Exception &e) {
+		err_ = e.what();
+	}
+	
+	log_stream_ = fdopen(STDOUT_FILENO, "r");
 }
 
 STALibertyParser::~STALibertyParser() {
-	delete visitor;
+	delete visitor_;
 }
 
 int STALibertyParser::check() {
-	// Out-of-line implementation for check
-	return 0; 
+	return err_.has_value();
 }
 
 std::string STALibertyParser::get_error_text() {
-	// Out-of-line implementation for get_error_text
-	return "";
+	return err_.value();
 }
 
 nlohmann::json STALibertyParser::as_json() {
 	json::object_t object;
-	object["library"] = visitor->top["groups"][0]["library"];
+	object["library"] = visitor_->top["groups"][0]["library"];
 	return object;
 }
 
@@ -206,4 +212,9 @@ void STALibertyParser::to_json_file(std::string filename, bool indent) {
 	else
 		file << as_json().dump();
 	file.close();
+}
+
+size_t STALibertyParser::printConsole(const char *buffer, size_t length) {
+	std::cerr << std::string_view(buffer, length) << std::endl;
+	return length;
 }
