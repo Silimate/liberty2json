@@ -1,0 +1,1 @@
+{"library":{"groups":[{"type":{"bit_from":0,"bit_to":3,"bit_width":4,"names":["bus4"]}},{"cell":{"groups":[{"bus":{"bus_type":"bus4","groups":[{"pin":{"names":["A[3]"]}}],"names":["A"]}}],"names":["ex"]}}],"names":["temp"]}}

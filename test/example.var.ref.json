@@ -1,0 +1,1 @@
+{"library":{"FANOUT":5,"groups":[{"cell":{"groups":[{"pin":{"direction":"output","max_fanout":"FANOUT * 2","names":["Z"]}}],"names":["AND"]}}],"names":["test"]}}

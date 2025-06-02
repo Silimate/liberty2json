@@ -1,0 +1,6 @@
+[submodule "third_party/opensta"]
+	path = third_party/opensta
+	url = https://github.com/silimate/opensta
+[submodule "third_party/backward-cpp"]
+	path = third_party/backward-cpp
+	url = https://github.com/bombela/backward-cpp.git

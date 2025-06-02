@@ -1,0 +1,1 @@
+{"library":{"defines":{"aaa":{"allowed_group_name":"pin","valtype":"int32"}},"groups":[{"cell":{"groups":[{"pin":{"aaa":1,"names":["A"]}},{"pin":{"aaa":1.0,"names":["BB"]}}],"names":["c1"]}}],"names":["t28"]}}

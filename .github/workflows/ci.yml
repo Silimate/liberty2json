@@ -1,0 +1,109 @@
+# Copyright (C) 2025 Silimate Inc.
+#
+# Adapted from Yosys wheels
+#
+# Copyright (C) 2024 Efabless Corporation
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice and this permission notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+# WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+# MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+# ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+# WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+# ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+# OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+name: Build and Test
+
+on:
+  push:
+    branches:
+      - "*"
+  pull_request:
+
+jobs:
+  build_and_test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [
+            {
+              name: "Ubuntu 22.04",
+              family: "linux",
+              runner: "ubuntu-22.04",
+              arch: "x86_64",
+            },
+            {
+              name: "Ubuntu 22.04",
+              family: "linux",
+              runner: "ubuntu-22.04-arm",
+              arch: "aarch64",
+            },
+            {
+              name: "macOS 13",
+              family: "macos",
+              runner: "macos-13",
+              arch: "x86_64",
+            },
+            {
+              name: "macOS 14",
+              family: "macos",
+              runner: "macos-14",
+              arch: "arm64",
+            }
+          ]
+    name: Build and Test | ${{ matrix.os.name }} | ${{ matrix.os.arch }}
+    runs-on: ${{ matrix.os.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+      - if: ${{ matrix.os.family == 'macos' }}
+        name: Brew Dependencies
+        run: |
+          cd third_party/opensta
+          brew bundle install
+          echo "PATH=$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH" >> $GITHUB_ENV
+          echo "CMAKE_ARGS=$CMAKE_ARGS -DTCL_LIBRARY=$(brew --prefix tcl-tk@8)/lib/libtcl8.6.dylib" >> $GITHUB_ENV
+          echo "CMAKE_ARGS=$CMAKE_ARGS -DTCL_INCLUDE_PATH=$(brew --prefix tcl-tk@8)/include/tcl-tk" >> $GITHUB_ENV
+          echo "CMAKE_ARGS=$CMAKE_ARGS -DFLEX_INCLUDE_DIR=$(brew --prefix flex)/include" >> $GITHUB_ENV
+      - if: ${{ matrix.os.family == 'linux' }}
+        name: Apt Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+              wget \
+              cmake \
+              gcc \
+              tcl-dev \
+              tcl-tclreadline \
+              libeigen3-dev \
+              swig \
+              bison \
+              flex \
+              libfl-dev \
+              libdwarf-dev \
+              libdw-dev \
+              libelf-dev \
+              elfutils \
+              automake \
+              autotools-dev
+      - if: ${{ matrix.os.family == 'linux' }}
+        name: Cudd (Linux)
+        run: |
+          curl -L https://raw.githubusercontent.com/davidkebo/cudd/main/cudd_versions/cudd-3.0.0.tar.gz | tar -xzvC .
+          cd cudd-3.0.0
+          ./configure
+          make -j$(nproc)
+          sudo make install
+      - run: |
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release $CMAKE_ARGS ..
+          make -j$(python3 -c 'import os; print(os.cpu_count(), end="")')
+      - run: |
+          make test
+
