@@ -1,7 +1,6 @@
-# Liberty2JSON STA
+# Liberty2JSON
 
-A rewrite of [liberty2json](https://github.com/silimate/liberty2json) to use the
-OpenSTA liberty parser for maximum speed and compatibility.
+Convert Liberty files to JSON using OpenSTA's liberty parser.
 
 ## Usage
 
