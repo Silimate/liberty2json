@@ -5,12 +5,12 @@
 (* area = "0.26244" *)
 (* blackbox =  1  *)
 module ICGx1_ASAP7_75t_L(GCLK, CLK, ENA, SE);
+  output GCLK;
+  wire GCLK;
   input CLK;
   wire CLK;
   input ENA;
   wire ENA;
-  output GCLK;
-  wire GCLK;
   input SE;
   wire SE;
 endmodule

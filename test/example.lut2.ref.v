@@ -10,16 +10,10 @@ module AN2(A, B, Z, D, E, H01, H02, H03, H04, CR0, CR1, LD0, LD1, D0, D1, Q0, Q1
   wire A;
   input B;
   wire B;
-  input CR0;
-  wire CR0;
-  input CR1;
-  wire CR1;
+  output Z;
+  wire Z;
   input [15:30] D;
   wire [15:30] D;
-  input D0;
-  wire D0;
-  input D1;
-  wire D1;
   input [0:31] E;
   wire [0:31] E;
   input H01;
@@ -30,10 +24,18 @@ module AN2(A, B, Z, D, E, H01, H02, H03, H04, CR0, CR1, LD0, LD1, D0, D1, Q0, Q1
   wire H03;
   input H04;
   wire H04;
+  input CR0;
+  wire CR0;
+  input CR1;
+  wire CR1;
   input LD0;
   wire LD0;
   input LD1;
   wire LD1;
+  input D0;
+  wire D0;
+  input D1;
+  wire D1;
   output Q0;
   wire Q0;
   output Q1;
@@ -44,8 +46,6 @@ module AN2(A, B, Z, D, E, H01, H02, H03, H04, CR0, CR1, LD0, LD1, D0, D1, Q0, Q1
   wire QN0;
   output QN1;
   wire QN1;
-  output Z;
-  wire Z;
 endmodule
 
 (* leakage_power_unit = "1pW" *)
@@ -68,6 +68,8 @@ endmodule
 (* stdcell =  1  *)
 (* blackbox =  1  *)
 module bank33(SE, CK, Q0, Q1, Q2, Q3);
+  input SE;
+  wire SE;
   input CK;
   wire CK;
   output Q0;
@@ -78,6 +80,4 @@ module bank33(SE, CK, Q0, Q1, Q2, Q3);
   wire Q2;
   output Q3;
   wire Q3;
-  input SE;
-  wire SE;
 endmodule

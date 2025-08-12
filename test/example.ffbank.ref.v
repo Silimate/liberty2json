@@ -10,12 +10,12 @@ module AN2(A, B, Z, D, E);
   wire A;
   input B;
   wire B;
+  output Z;
+  wire Z;
   input [15:30] D;
   wire [15:30] D;
   input [0:31] E;
   wire [0:31] E;
-  output Z;
-  wire Z;
 endmodule
 
 (* leakage_power_unit = "1pW" *)
