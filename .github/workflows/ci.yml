@@ -28,7 +28,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [
+        os:
+          [
             {
               name: "Ubuntu 22.04",
               family: "linux",
@@ -52,7 +53,7 @@ jobs:
               family: "macos",
               runner: "macos-14",
               arch: "arm64",
-            }
+            },
           ]
     name: Build and Test | ${{ matrix.os.name }} | ${{ matrix.os.arch }}
     runs-on: ${{ matrix.os.runner }}
@@ -67,9 +68,7 @@ jobs:
           cd third_party/opensta
           brew bundle install
           echo "PATH=$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH" >> $GITHUB_ENV
-          echo "CMAKE_ARGS=$CMAKE_ARGS -DTCL_LIBRARY=$(brew --prefix tcl-tk@8)/lib/libtcl8.6.dylib" >> $GITHUB_ENV
-          echo "CMAKE_ARGS=$CMAKE_ARGS -DTCL_INCLUDE_PATH=$(brew --prefix tcl-tk@8)/include/tcl-tk" >> $GITHUB_ENV
-          echo "CMAKE_ARGS=$CMAKE_ARGS -DFLEX_INCLUDE_DIR=$(brew --prefix flex)/include" >> $GITHUB_ENV
+          echo "CMAKE_ARGS=-DTCL_LIBRARY=$(brew --prefix tcl-tk@8)/lib/libtcl8.6.dylib -DTCL_INCLUDE_PATH=$(brew --prefix tcl-tk@8)/include/tcl-tk -DFLEX_INCLUDE_DIR=$(brew --prefix flex)/include" >> $GITHUB_ENV
       - if: ${{ matrix.os.family == 'linux' }}
         name: Apt Dependencies
         run: |
@@ -106,4 +105,3 @@ jobs:
           make -j$(python3 -c 'import os; print(os.cpu_count(), end="")')
       - run: |
           make test
-
