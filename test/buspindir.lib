@@ -1,0 +1,111 @@
+library (buspindir) {
+  delay_model             : table_lookup;
+  time_unit               : "1ns";
+  voltage_unit            : "1V";
+  current_unit            : "1mA";
+  leakage_power_unit      : "1nW";
+  pulling_resistance_unit : "1kohm";
+  capacitive_load_unit    (1.0, pf);
+
+  slew_lower_threshold_pct_rise : 30.00;
+  slew_upper_threshold_pct_rise : 70.00;
+  slew_lower_threshold_pct_fall : 30.00;
+  slew_upper_threshold_pct_fall : 70.00;
+  input_threshold_pct_rise      : 50.00;
+  output_threshold_pct_rise     : 50.00;
+  input_threshold_pct_fall      : 50.00;
+  output_threshold_pct_fall     : 50.00;
+  slew_derate_from_library      : 0.67;
+  default_fanout_load           : 1.00;
+  default_inout_pin_cap         : 1.00;
+  default_input_pin_cap         : 1.00;
+  default_output_pin_cap        : 1.00;
+  default_cell_leakage_power    : 1.00;
+  default_leakage_power_density : 0.1;
+  library_features (report_delay_calculation);
+  library_features (report_power_calculation);
+
+  type (bus_7_0) {
+    base_type : array;
+    data_type : bit;
+    bit_width : 8;
+    bit_from  : 7;
+    bit_to    : 0;
+    downto    : true;
+  }
+  type (bus_49_0) {
+    base_type : array;
+    data_type : bit;
+    bit_width : 50;
+    bit_from  : 49;
+    bit_to    : 0;
+    downto    : true;
+  }
+
+  cell (myram) {
+    memory () {
+      type          : ram;
+      address_width : 8;
+      word_width    : 50;
+    }
+    interface_timing : true;
+    area             : 1;
+    cell_leakage_power : 1;
+    pg_pin (VDD) {
+      voltage_name : VDD
+      pg_type      : primary_power
+    }
+    pg_pin (VSS) {
+      voltage_name : VSS
+      pg_type      : primary_ground
+    }
+
+    bus (A) {
+      bus_type : A_7_0;
+      pin ("A[7:0]") {
+        related_power_pin   : VDD;
+        related_ground_pin  : VSS;
+        direction           : input;
+        max_transition      : 0.300;
+        capacitance         : 1;
+      }
+    }
+
+    pin (CLK) {
+      related_power_pin   : VDD;
+      related_ground_pin  : VSS;
+      direction           : input;
+      max_transition      : 0.100;
+      capacitance         : 1;
+      clock               : true;
+    }
+
+    bus (DI) {
+      bus_type : bus_49_0;
+      memory_write() {
+        address : A;
+        clocked_on : CLK;
+      }
+      pin ("DI[49:0]") {
+        related_power_pin   : VDD;
+        related_ground_pin  : VSS;
+        direction           : input;
+        max_transition      : 0.100;
+        capacitance         : 1;
+      }
+    }
+
+    bus (DO) {
+      bus_type : bus_49_0;
+      memory_read() {
+        address : A;
+      }
+      pin ("DO[49:0]") {
+        related_power_pin   : VDD;
+        related_ground_pin  : VSS;
+        power_down_function : "!VDD + VSS";
+        direction           : output;
+      }
+    }
+  }
+}
