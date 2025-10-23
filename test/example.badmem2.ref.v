@@ -9,7 +9,7 @@ module AN2(A, B, X, Z);
   wire A;
   input B;
   wire B;
-  input X;
+  output X;
   wire X;
   output Z;
   wire Z;
