@@ -1,1 +1,1 @@
-{"library":{"FANOUT":5,"groups":[{"cell":{"groups":[{"pin":{"direction":"output","max_fanout":"FANOUT * 2","names":["Z"]}}],"names":["AND"]}}],"names":["test"]}}
+{"library":{"FANOUT":5.0,"groups":[{"cell":{"groups":[{"pin":{"direction":"output","max_fanout":"FANOUT*2.000000e+00","names":["Z"],"src":"test/example.var.lib:4"}}],"names":["AND"],"src":"test/example.var.lib:3"}}],"names":["test"],"src":"test/example.var.lib:1"}}

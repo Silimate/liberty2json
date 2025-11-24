@@ -1,1 +1,1 @@
-{"library":{"defines":{"aaa":{"allowed_group_name":"pin","valtype":"int32"}},"groups":[{"cell":{"groups":[{"pin":{"aaa":1,"names":["A"]}},{"pin":{"aaa":1.0,"names":["BB"]}}],"names":["c1"]}}],"names":["t28"]}}
+{"library":{"defines":{"aaa":{"allowed_group_name":"pin","valtype":"int32"}},"groups":[{"cell":{"groups":[{"pin":{"aaa":1.0,"names":["A"],"src":"test/t28.lib:4"}},{"pin":{"aaa":1.0,"names":["BB"],"src":"test/t28.lib:7"}}],"names":["c1"],"src":"test/t28.lib:3"}}],"names":["t28"],"src":"test/t28.lib:1"}}

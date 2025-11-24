@@ -77,3 +77,27 @@ make release
 ```bash
 make test
 ```
+
+
+## Nix (Development Only)
+
+### Dependencies
+
+```bash
+nix develop github:librelane/librelane/dev#opensta
+```
+
+### Build
+
+```bash
+make release ADDITIONAL_CMAKE_OPTIONS="$cmakeFlags"
+```
+
+### Test
+
+Python is required for testing and unfortunately not included in the Nix
+environment.
+
+```bash
+make test
+```

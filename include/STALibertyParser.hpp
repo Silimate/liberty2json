@@ -30,13 +30,14 @@ using json = nlohmann::json;
 
 class Visitor;
 
-// C++ wrapper for Synopsys Liberty parser
+// C++ wrapper for OpenSTA Liberty parser
 class STALibertyParser : public LibertyParser, public sta::Report {
 		Visitor *visitor_;
-		std::string filename_;
+		std::filesystem::path filename_;
+		bool include_src_attributes_;
 		std::optional<std::string> err_ = std::nullopt;
 	public:
-		STALibertyParser(string filename);
+		STALibertyParser(string filename, bool include_src_attributes = false);
 		
 		// LibertyParser
 		~STALibertyParser() override;

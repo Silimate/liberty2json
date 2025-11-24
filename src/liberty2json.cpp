@@ -16,6 +16,7 @@
 		You should have received a copy of the GNU General Public License
 		along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
+#include <memory>
 #include <iostream>
 #include "STALibertyParser.hpp"
 #include "backward.hpp"
@@ -34,6 +35,7 @@ int main(int argc, char *argv[]) {
 	program.add_argument("--check").help("check the Liberty file for errors only and exit").flag();
 	program.add_argument("--debug").help("enable debug mode").flag();
 	program.add_argument("--indent").help("enable indentation in file output").flag();
+	program.add_argument("--src").help("include source attribute in top-level groups").flag();
   try {
     program.parse_args(argc, argv);
   }
@@ -50,7 +52,7 @@ int main(int argc, char *argv[]) {
 		sta::Sta::setSta(sta);
 		sta->makeComponents();
 		
-		LibertyParser *parser = dynamic_cast<LibertyParser *>(new STALibertyParser(program.get<std::string>("filename")));;
+		auto parser = std::make_shared<STALibertyParser>(program.get<std::string>("filename"), program.get<bool>("--src"));
 		if (parser->check()) {
 			std::cerr << "ERROR: " << parser->get_error_text() << std::endl;
 			return 1;
