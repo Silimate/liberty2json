@@ -17,9 +17,9 @@ JsonTypes = Union[Dict, List, float, int, str, bool, NoneType]
 def deep_compare(lhs: JsonTypes, rhs: JsonTypes):
     """
     This is a custom, slightly lenient deep-dict comparator for JSON dicts.
-    
+
     Compared to a more standard comparator:
-    
+
     * floats and ints are all coerced to floats for comparison purposes.
         * tolerance of 1% exists to account for different handling of floating
           point units.
@@ -117,7 +117,7 @@ def test_lib(au: str):
     dotlib = au.replace(".ref.json", ".lib")
     got = au.replace(".ref.json", ".test.json")
     result = subprocess.run(
-        [str(pytest.l2j), "--outfile", got, dotlib],
+        [str(pytest.l2j), "--src", "--outfile", got, dotlib],
         stderr=subprocess.STDOUT,
         encoding="utf8",
     )
@@ -134,7 +134,9 @@ def test_lib(au: str):
         json.dump(difference, fp=f)
     if difference is not None:
         flattened = flatten(difference)
-        all_extra = functools.reduce(lambda acc, el: acc and "extra" in el, flattened.values(), True)
+        all_extra = functools.reduce(
+            lambda acc, el: acc and "extra" in el, flattened.values(), True
+        )
         if all_extra:
             logging.warning(f"Differences found in {got}, but all extra")
             return

@@ -29,6 +29,8 @@ class Visitor: public LibertyGroupVisitor {
 	friend class STALibertyParser;
 	json top;
 	json::json_pointer current_group;
+	std::filesystem::path src;
+	bool include_src_attributes;
 	
 	static const char* groupTypeName(LibertyGroupType t) {
 		switch (t) {
@@ -60,7 +62,7 @@ class Visitor: public LibertyGroupVisitor {
 		}
 	}
 	
-	Visitor() {
+	Visitor(std::filesystem::path src, bool include_src_attributes): src(src), include_src_attributes(include_src_attributes) {
 		top = {};
 		current_group = json::json_pointer("");
 	}
@@ -89,6 +91,12 @@ class Visitor: public LibertyGroupVisitor {
 				}
 			}
 			top.at(current_group)["names"] = array;
+		}
+		if (include_src_attributes) {
+			auto src_ptr = current_group;
+			src_ptr.push_back("src");
+			std::string src_attr = src.string() + ":" + std::to_string(group->line());
+			top[src_ptr] = src_attr;
 		}
 		current_group.pop_back();
 		current_group.pop_back();
@@ -176,8 +184,8 @@ class Visitor: public LibertyGroupVisitor {
   bool save(LibertyVariable *variable) { return true; }
 };
 
-STALibertyParser::STALibertyParser(std::string filename): filename_(filename) {
-	visitor_ = new Visitor();
+STALibertyParser::STALibertyParser(std::string filename, bool include_src_attributes): filename_(filename) {
+	visitor_ = new Visitor(filename, include_src_attributes);
 	try {
 		parseLibertyFile(filename_.c_str(), visitor_, this);
 	} catch (sta::Exception &e) {

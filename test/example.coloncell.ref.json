@@ -1,1 +1,1 @@
-{"library":{"groups":[{"cell":{"area":"10 * 5","names":["b:c"]}}],"names":["a"]}}
+{"library":{"groups":[{"cell":{"area":"1.000000e+01*5.000000e+00","names":["b:c"],"src":"test/example.coloncell.lib:2"}}],"names":["a"],"src":"test/example.coloncell.lib:1"}}

@@ -4,9 +4,7 @@ import filecmp
 from pathlib import Path
 
 TEST_DIR = Path(__file__).resolve().parent
-LIBERTY2JSON_EXE = os.getenv(
-    "REF_L2J_PATH", TEST_DIR.parent / "build" / "src" / "liberty2json"
-)
+LIBERTY2JSON_EXE = os.getenv("REF_L2J_PATH", TEST_DIR.parent / "build" / "liberty2json")
 
 
 def check_liberty_json(json_filename):
@@ -29,7 +27,15 @@ def create_reference_files():
             ref_file = lib_file.replace(".lib", ".ref.json")
 
             # Run liberty2json on the .lib file to create the reference JSON file
-            subprocess.run([LIBERTY2JSON_EXE, lib_file, "--outfile", ref_file])
+            subprocess.run(
+                [
+                    LIBERTY2JSON_EXE,
+                    os.path.relpath(lib_file),
+                    "--src",
+                    "--outfile",
+                    ref_file,
+                ]
+            )
 
 
 if __name__ == "__main__":
