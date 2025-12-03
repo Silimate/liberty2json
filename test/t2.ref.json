@@ -1,1 +1,1 @@
-{"library":{"groups":[{"cell":{"area":12.0,"names":["example"]}}],"names":["sample"],"nom_voltage":5}}
+{"library":{"groups":[{"cell":{"area":12.0,"names":["example"],"src":"test/t2.lib:3"}}],"names":["sample"],"nom_voltage":5.0,"src":"test/t2.lib:1"}}

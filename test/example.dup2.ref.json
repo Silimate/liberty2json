@@ -1,1 +1,1 @@
-{"library":{"groups":[{"cell":{"names":["C"]}},{"cell":{"groups":[{"pin":{"names":["Pp"]}},{"pin":{"names":["pP"]}}],"names":["c"]}}],"names":["L"]}}
+{"library":{"groups":[{"cell":{"names":["C"],"src":"test/example.dup2.lib:2"}},{"cell":{"groups":[{"pin":{"names":["Pp"],"src":"test/example.dup2.lib:5"}},{"pin":{"names":["pP"],"src":"test/example.dup2.lib:6"}}],"names":["c"],"src":"test/example.dup2.lib:3"}}],"names":["L"],"src":"test/example.dup2.lib:1"}}
