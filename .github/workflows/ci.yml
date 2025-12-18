@@ -43,17 +43,11 @@ jobs:
               arch: "aarch64",
             },
             {
-              name: "macOS 13",
-              family: "macos",
-              runner: "macos-13",
-              arch: "x86_64",
-            },
-            {
               name: "macOS 14",
               family: "macos",
               runner: "macos-14",
               arch: "arm64",
-            },
+            }
           ]
     name: Build and Test | ${{ matrix.os.name }} | ${{ matrix.os.arch }}
     runs-on: ${{ matrix.os.runner }}
