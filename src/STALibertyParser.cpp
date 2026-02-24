@@ -179,9 +179,9 @@ class Visitor: public LibertyGroupVisitor {
 		top[define_ptr]["valtype"] = attrTypeName(define->valueType());
 	}
   // Predicates to save parse structure after visits.
-  bool save(LibertyGroup *group) { return true; }
-  bool save(LibertyAttr *attr) { return true; }
-  bool save(LibertyVariable *variable) { return true; }
+  bool save(LibertyGroup *group) { return false; }
+  bool save(LibertyAttr *attr) { return false; }
+  bool save(LibertyVariable *variable) { return false; }
 };
 
 STALibertyParser::STALibertyParser(std::string filename, bool include_src_attributes): filename_(filename) {
