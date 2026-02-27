@@ -3,7 +3,7 @@ name: Release (anylinux amd64)
 on:
   push:
     branches:
-      - master
+      - main
   workflow_dispatch:
 
 permissions:
@@ -31,7 +31,7 @@ jobs:
               apk add --no-cache \
                 build-base cmake git \
                 tcl-dev swig bison flex flex-dev \
-                libdwarf-dev elfutils-dev zlib-dev
+                libdwarf-dev elfutils-dev zlib-dev eigen-dev
               git config --global --add safe.directory /src
               git config --global --add safe.directory /src/third_party/opensta
               git config --global --add safe.directory /src/third_party/backward-cpp
@@ -53,7 +53,7 @@ jobs:
           echo "date=$DATE" >> "$GITHUB_OUTPUT"
           REPO_URL="${{ github.server_url }}/${{ github.repository }}"
           printf '%s\n' \
-            "Automated build from \`master\` @ [\`${SHORT_SHA}\`](${REPO_URL}/commit/${FULL_SHA})" \
+            "Automated build from \`main\` @ [\`${SHORT_SHA}\`](${REPO_URL}/commit/${FULL_SHA})" \
             "" \
             "**Platform:** Linux amd64 (Alpine-based, portable across Linux distros)" \
             "**Built:** ${DATE}" \
