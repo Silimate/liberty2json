@@ -29,9 +29,16 @@ jobs:
             alpine:3.20 sh -c '
               set -ex
               apk add --no-cache \
-                build-base cmake git \
+                build-base cmake git curl \
                 tcl-dev swig bison flex flex-dev \
-                libdwarf-dev elfutils-dev zlib-dev eigen-dev
+                libdwarf-dev elfutils-dev zlib-dev eigen-dev \
+                automake autoconf libtool
+              curl -L https://raw.githubusercontent.com/davidkebo/cudd/main/cudd_versions/cudd-3.0.0.tar.gz | tar -xzC /tmp
+              cd /tmp/cudd-3.0.0
+              ./configure
+              make -j$(nproc)
+              make install
+              cd /src
               git config --global --add safe.directory /src
               git config --global --add safe.directory /src/third_party/opensta
               git config --global --add safe.directory /src/third_party/backward-cpp
