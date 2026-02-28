@@ -32,7 +32,7 @@ jobs:
                 build-base cmake git curl \
                 tcl-dev swig bison flex flex-dev \
                 libdwarf-dev elfutils-dev zlib-dev eigen-dev \
-                automake autoconf libtool
+                automake autoconf libtool patchelf
               curl -L https://raw.githubusercontent.com/davidkebo/cudd/main/cudd_versions/cudd-3.0.0.tar.gz | tar -xzC /tmp
               cd /tmp/cudd-3.0.0
               ./configure
@@ -44,8 +44,25 @@ jobs:
               git config --global --add safe.directory /src/third_party/backward-cpp
               cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -S . -B build
               cmake --build build -j$(nproc)
-              mkdir -p /tmp/install/usr/local/bin
+              mkdir -p /tmp/install/usr/local/bin /tmp/install/usr/local/lib
               cp build/liberty2json /tmp/install/usr/local/bin/
+
+              # Bundle shared library dependencies and set RPATHs
+              STAGE=/tmp/install/usr/local
+              for f in "$STAGE"/bin/*; do
+                [ -f "$f" ] || continue
+                ldd "$f" 2>/dev/null | awk "/=>/ {print \$3}" | while read -r lib; do
+                  [ -f "$lib" ] || continue
+                  base=$(basename "$lib")
+                  case "$base" in ld-musl-*|libc.musl-*) continue ;; esac
+                  [ -f "$STAGE/lib/$base" ] || cp "$lib" "$STAGE/lib/$base"
+                done
+                patchelf --set-rpath "\$ORIGIN/../lib" "$f"
+              done
+              for f in "$STAGE"/lib/*.so*; do
+                [ -f "$f" ] && patchelf --set-rpath "\$ORIGIN" "$f" 2>/dev/null || true
+              done
+
               cd /tmp/install
               tar czf /src/liberty2json-anylinux-amd64.tar.gz .
             '
