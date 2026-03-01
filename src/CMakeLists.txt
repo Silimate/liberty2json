@@ -4,7 +4,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
 
 set(LIBERTY2JSON_SOURCES
     liberty2json.cpp
-    STALibertyParser.cpp
+    STALibertyTranslator.cpp
 )
 
 add_executable(liberty2json
@@ -23,4 +23,6 @@ target_link_libraries(liberty2json PUBLIC
     Backward::Interface
     OpenSTA
     z
+    scope_guard
+    jsoncons
 )

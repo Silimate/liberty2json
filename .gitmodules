@@ -4,3 +4,9 @@
 [submodule "third_party/backward-cpp"]
 	path = third_party/backward-cpp
 	url = https://github.com/bombela/backward-cpp.git
+[submodule "third_party/jsoncons"]
+	path = third_party/jsoncons
+	url = https://github.com/danielaparker/jsoncons
+[submodule "third_party/scope_guard"]
+	path = third_party/scope_guard
+	url = https://github.com/Neargye/scope_guard
