@@ -84,7 +84,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install cmake
+          brew install cmake eigen tcl-tk@8 swig bison flex
 
       - name: Build CUDD from source
         run: |
@@ -96,7 +96,12 @@ jobs:
 
       - name: Build liberty2json
         run: |
-          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -S . -B build
+          export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH"
+          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
+            -DTCL_LIBRARY=$(brew --prefix tcl-tk@8)/lib/libtcl8.6.dylib \
+            -DTCL_INCLUDE_PATH=$(brew --prefix tcl-tk@8)/include/tcl-tk \
+            -DFLEX_INCLUDE_DIR=$(brew --prefix flex)/include \
+            -S . -B build
           cmake --build build -j$(sysctl -n hw.ncpu)
 
       - name: Package tarball
