@@ -1,5 +1,5 @@
 /*
-	  liberty2json
+		liberty2json
 
 		Copyright (C) 2025 Silimate Inc.
 
@@ -16,35 +16,41 @@
 		You should have received a copy of the GNU General Public License
 		along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#include <memory>
-#include <iostream>
-#include "STALibertyParser.hpp"
+
+#include "STALibertyTranslator.hpp"
 #include "backward.hpp"
 #include "argparse.hpp"
 
 #include "Sta.hh"
 
+#include <scope_guard.hpp>
+
+#include <memory>
+#include <iostream>
+#include <fstream>
+
 // Main method
 int main(int argc, char *argv[]) {
 	// Setup signal handling
 	backward::SignalHandling sh;
+
 	// Parse arguments
-  argparse::ArgumentParser program("liberty2json");
-  program.add_argument("filename").help("name of the Liberty file to parse");
-	program.add_argument("--outfile").help("name of the output JSON file");
+	argparse::ArgumentParser program("liberty2json");
+	program.add_argument("filename").help("name of the Liberty file to parse");
+	program.add_argument("--outfile", "-o").help("name of the output JSON file");
 	program.add_argument("--check").help("check the Liberty file for errors only and exit").flag();
 	program.add_argument("--debug").help("enable debug mode").flag();
 	program.add_argument("--indent").help("enable indentation in file output").flag();
 	program.add_argument("--src").help("include source attribute in top-level groups").flag();
-  try {
-    program.parse_args(argc, argv);
-  }
-  catch (const std::exception& err) {
-    std::cerr << err.what() << std::endl;
-    std::cerr << program;
-    return 1;
-  }
-	
+
+	try {
+		program.parse_args(argc, argv);
+	} catch (const std::exception& err) {
+		std::cerr << err.what() << std::endl;
+		std::cerr << program;
+		return 1;
+	}
+
 	// Parse Liberty file
 	try {
 		sta::initSta();
@@ -52,19 +58,35 @@ int main(int argc, char *argv[]) {
 		sta::Sta::setSta(sta);
 		sta->makeComponents();
 		
-		auto parser = std::make_shared<STALibertyParser>(program.get<std::string>("filename"), program.get<bool>("--src"));
+		std::ostream *out_stream = nullptr;
+		MAKE_SCOPE_EXIT(scope_exit) {
+			delete out_stream;
+		};
+		if (program.is_used("--outfile")) {
+			out_stream = new std::ofstream(program.get<string>("--outfile"));
+		} else if (program.get<bool>("--check")) {
+#if defined(_WIN32)
+			out_stream = new std::ofstream("NUL");
+#else
+			// Assume UNIX
+			out_stream = new std::ofstream("/dev/null");
+#endif
+		} else {
+			out_stream = &std::cout;
+			scope_exit.dismiss();
+		}
+		
+		auto parser = std::make_shared<STALibertyTranslator>(
+			program.get<string>("filename"),
+			out_stream,
+			program.get<bool>("--src")
+		);
+		
 		if (parser->check()) {
 			std::cerr << "ERROR: " << parser->get_error_text() << std::endl;
 			return 1;
 		}
-		if (program.get<bool>("--check")) {
-			return 0;
-		}
-		if (program.is_used("--outfile")) {
-			parser->to_json_file(program.get<std::string>("--outfile"), (program.get<bool>("--indent")));
-		} else {
-			std::cout << parser->as_json().dump(2) << std::endl;
-		}
+		return 0;
 	} catch (std::exception &e) {
 		std::cerr << "FATAL: " << e.what() << std::endl;
 		return 1;

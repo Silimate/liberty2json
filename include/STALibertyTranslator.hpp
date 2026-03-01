@@ -1,5 +1,5 @@
 /*
-	  liberty2json
+		liberty2json
 
 		Copyright (C) 2025 Silimate Inc.
 
@@ -16,26 +16,34 @@
 		You should have received a copy of the GNU General Public License
 		along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-
 #pragma once
+
+#include "LibertyParser.hh"
+#include "Report.hh"
 
 #include <fstream>
 #include <string>
-#include "json.hpp"
-using json = nlohmann::json;
+#include <optional>
+#include <filesystem>
 
-#ifndef LIBERTY_PARSER
-#define LIBERTY_PARSER
+using string = std::string;
 
-// Liberty Parser Interface class 
-class LibertyParser {
+class Visitor;
+
+// C++ wrapper for OpenSTA Liberty parser
+class STALibertyTranslator: public sta::Report {
+		Visitor *visitor_;
+		std::filesystem::path filename_;
+		std::optional<string> err_ = std::nullopt;
 	public:
-		virtual ~LibertyParser() {}; 
-		virtual int check() = 0;
-		virtual std::string get_error_text() = 0;
-		virtual json as_json() = 0;
-		virtual void to_json_file(std::string filename, bool indent) = 0;
-	private:
+		STALibertyTranslator(string filename, std::ostream* out_stream, bool include_src_attributes = false);
+		
+		// LibertyParser
+		~STALibertyTranslator() override;
+		int check();
+		string get_error_text();
+		
+	protected:
+		// sta::Report
+		virtual size_t printConsole(const char *buffer, size_t length) override;
 };
-
-#endif
