@@ -1,4 +1,4 @@
-name: "Release (anylinux amd64 + macOS arm64)"
+name: "Release (anylinux amd64 + manylinux2014 amd64 + macOS arm64)"
 
 on:
   push:
@@ -12,7 +12,7 @@ permissions:
 jobs:
   build-linux:
     runs-on: ubuntu-latest
-    name: Build anylinux amd64 tarball
+    name: Build anylinux amd64 tarball (musl)
 
     steps:
       - uses: actions/checkout@v4
@@ -71,6 +71,89 @@ jobs:
         with:
           name: linux-tarball
           path: liberty2json-anylinux-amd64.tar.gz
+
+  build-manylinux:
+    runs-on: ubuntu-latest
+    name: Build manylinux2014 amd64 tarball (glibc 2.17+)
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: true
+
+      - name: Build in CentOS 7 container
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/src" \
+            -w /src \
+            --platform linux/amd64 \
+            centos:7 bash -c '
+              set -ex
+
+              sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo
+              sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo
+              sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
+
+              yum install -y centos-release-scl epel-release
+              sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo
+              sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo
+              sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
+
+              yum install -y devtoolset-11-gcc-c++ make git curl \
+                tcl-devel swig3 flex zlib-devel eigen3-devel \
+                patchelf \
+                libdwarf-devel elfutils-libelf-devel
+
+              curl -L https://github.com/Kitware/CMake/releases/download/v3.28.3/cmake-3.28.3-linux-x86_64.tar.gz | tar -xzC /opt
+              export PATH=/opt/cmake-3.28.3-linux-x86_64/bin:$PATH
+
+              # Build bison >= 3.x from source
+              curl -L https://ftp.gnu.org/gnu/bison/bison-3.8.2.tar.gz | tar -xzC /tmp
+              cd /tmp/bison-3.8.2 && source /opt/rh/devtoolset-11/enable && ./configure && make -j$(nproc) && make install
+              cd /src
+
+              source /opt/rh/devtoolset-11/enable
+
+              # Build CUDD
+              curl -L https://raw.githubusercontent.com/davidkebo/cudd/main/cudd_versions/cudd-3.0.0.tar.gz | tar -xzC /tmp
+              cd /tmp/cudd-3.0.0
+              ./configure
+              make -j$(nproc)
+              make install
+              cd /src
+
+              git config --global --add safe.directory /src
+              git config --global --add safe.directory /src/third_party/opensta
+              git config --global --add safe.directory /src/third_party/backward-cpp
+              cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -S . -B build
+              cmake --build build -j$(nproc)
+              mkdir -p /tmp/install/usr/local/bin /tmp/install/usr/local/lib
+              cp build/liberty2json /tmp/install/usr/local/bin/
+
+              STAGE=/tmp/install/usr/local
+              for f in "$STAGE"/bin/*; do
+                [ -f "$f" ] || continue
+                ldd "$f" 2>/dev/null | awk "/=>/ {print \$3}" | while read -r lib; do
+                  [ -f "$lib" ] || continue
+                  base=$(basename "$lib")
+                  case "$base" in ld-linux*|libc.so*|libdl*|libpthread*|librt*|libm.so*) continue ;; esac
+                  [ -f "$STAGE/lib/$base" ] || cp "$lib" "$STAGE/lib/$base"
+                done
+                patchelf --set-rpath "\$ORIGIN/../lib" "$f"
+              done
+              for f in "$STAGE"/lib/*.so*; do
+                [ -f "$f" ] && patchelf --set-rpath "\$ORIGIN" "$f" 2>/dev/null || true
+              done
+
+              cd /tmp/install
+              tar czf /src/liberty2json-manylinux2014-amd64.tar.gz .
+            '
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: manylinux-tarball
+          path: liberty2json-manylinux2014-amd64.tar.gz
 
   build-macos:
     runs-on: macos-15
@@ -145,7 +228,7 @@ jobs:
 
   release:
     runs-on: ubuntu-latest
-    needs: [build-linux, build-macos]
+    needs: [build-linux, build-manylinux, build-macos]
     name: Create GitHub releases
 
     steps:
@@ -156,6 +239,10 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: linux-tarball
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: manylinux-tarball
 
       - uses: actions/download-artifact@v4
         with:
@@ -175,7 +262,8 @@ jobs:
             "" \
             "| Platform | File | Install |" \
             "|----------|------|---------|" \
-            "| Linux amd64 (Alpine-based, portable) | \`liberty2json-anylinux-amd64.tar.gz\` | \`sudo tar xzf liberty2json-anylinux-amd64.tar.gz -C /\` |" \
+            "| Linux amd64 (musl, portable) | \`liberty2json-anylinux-amd64.tar.gz\` | \`sudo tar xzf liberty2json-anylinux-amd64.tar.gz -C /\` |" \
+            "| Linux amd64 (manylinux2014, glibc 2.17+) | \`liberty2json-manylinux2014-amd64.tar.gz\` | \`sudo tar xzf liberty2json-manylinux2014-amd64.tar.gz -C /\` |" \
             "| macOS arm64 (Apple Silicon) | \`liberty2json-macos-arm64.tar.gz\` | \`sudo tar xzf liberty2json-macos-arm64.tar.gz -C /\` |" \
             "" \
             "**Built:** ${DATE}" \
@@ -186,6 +274,7 @@ jobs:
           TAG="build-${{ steps.meta.outputs.date }}-${{ steps.meta.outputs.short_sha }}"
           gh release create "$TAG" \
             liberty2json-anylinux-amd64.tar.gz \
+            liberty2json-manylinux2014-amd64.tar.gz \
             liberty2json-macos-arm64.tar.gz \
             --target "${{ github.sha }}" \
             --title "Build ${{ steps.meta.outputs.date }} (${{ steps.meta.outputs.short_sha }})" \
@@ -200,6 +289,7 @@ jobs:
           gh release delete latest --yes 2>/dev/null || true
           gh release create latest \
             liberty2json-anylinux-amd64.tar.gz \
+            liberty2json-manylinux2014-amd64.tar.gz \
             liberty2json-macos-arm64.tar.gz \
             --target "${{ github.sha }}" \
             --title "Latest Build (${{ steps.meta.outputs.date }})" \
