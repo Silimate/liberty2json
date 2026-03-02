@@ -103,7 +103,7 @@ jobs:
               yum install -y devtoolset-11-gcc-c++ make git curl \
                 tcl-devel swig3 flex zlib-devel eigen3-devel \
                 patchelf \
-                libdwarf-devel elfutils-libelf-devel
+                elfutils-devel elfutils-libelf-devel libdwarf-devel
 
               curl -L https://github.com/Kitware/CMake/releases/download/v3.28.3/cmake-3.28.3-linux-x86_64.tar.gz | tar -xzC /opt
               export PATH=/opt/cmake-3.28.3-linux-x86_64/bin:$PATH
