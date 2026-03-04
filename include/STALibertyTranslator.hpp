@@ -25,14 +25,15 @@
 #include <string>
 #include <optional>
 #include <filesystem>
+#include <memory>
 
 using string = std::string;
 
-class Visitor;
+struct Visitor;
 
 // C++ wrapper for OpenSTA Liberty parser
 class STALibertyTranslator: public sta::Report {
-		Visitor *visitor_;
+		std::unique_ptr<Visitor> visitor_;
 		std::filesystem::path filename_;
 		std::optional<string> err_ = std::nullopt;
 	public:

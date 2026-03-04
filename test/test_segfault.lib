@@ -1,0 +1,5 @@
+library(segfault_tests) {
+  define_group();
+  define_group(one_arg);
+  really_complex_attribute();
+}

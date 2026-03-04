@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 	program.add_argument("--outfile", "-o").help("name of the output JSON file");
 	program.add_argument("--check").help("check the Liberty file for errors only and exit").flag();
 	program.add_argument("--debug").help("enable debug mode").flag();
-	program.add_argument("--indent").help("enable indentation in file output").flag();
+	program.add_argument("--indent").help("has no effect and is kept for backwards compatibility").flag();
 	program.add_argument("--src").help("include source attribute in top-level groups").flag();
 
 	try {
@@ -51,44 +51,39 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-	// Parse Liberty file
-	try {
-		sta::initSta();
-		sta::Sta *sta = new sta::Sta();
-		sta::Sta::setSta(sta);
-		sta->makeComponents();
-		
-		std::ostream *out_stream = nullptr;
-		MAKE_SCOPE_EXIT(scope_exit) {
-			delete out_stream;
-		};
-		if (program.is_used("--outfile")) {
-			out_stream = new std::ofstream(program.get<string>("--outfile"));
-		} else if (program.get<bool>("--check")) {
+// Parse Liberty file
+	sta::initSta();
+	sta::Sta *sta = new sta::Sta();
+	sta::Sta::setSta(sta);
+	sta->makeComponents();
+	
+	std::ostream *out_stream = nullptr;
+	MAKE_SCOPE_EXIT(scope_exit) {
+		delete out_stream;
+	};
+	if (program.is_used("--outfile")) {
+		out_stream = new std::ofstream(program.get<string>("--outfile"));
+	} else if (program.get<bool>("--check")) {
 #if defined(_WIN32)
-			out_stream = new std::ofstream("NUL");
+		out_stream = new std::ofstream("NUL");
 #else
-			// Assume UNIX
-			out_stream = new std::ofstream("/dev/null");
+		// Assume UNIX
+		out_stream = new std::ofstream("/dev/null");
 #endif
-		} else {
-			out_stream = &std::cout;
-			scope_exit.dismiss();
-		}
-		
-		auto parser = std::make_shared<STALibertyTranslator>(
-			program.get<string>("filename"),
-			out_stream,
-			program.get<bool>("--src")
-		);
-		
-		if (parser->check()) {
-			std::cerr << "ERROR: " << parser->get_error_text() << std::endl;
-			return 1;
-		}
-		return 0;
-	} catch (std::exception &e) {
-		std::cerr << "FATAL: " << e.what() << std::endl;
+	} else {
+		out_stream = &std::cout;
+		scope_exit.dismiss();
+	}
+	
+	auto parser = std::make_shared<STALibertyTranslator>(
+		program.get<string>("filename"),
+		out_stream,
+		program.get<bool>("--src")
+	);
+	
+	if (parser->check()) {
+		std::cerr << "ERROR: " << parser->get_error_text() << std::endl;
 		return 1;
 	}
+	return 0;
 }
