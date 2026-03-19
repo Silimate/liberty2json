@@ -101,7 +101,7 @@ jobs:
               sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
 
               yum install -y devtoolset-11-gcc-c++ make git curl \
-                tcl-devel swig3 flex zlib-devel eigen3-devel \
+                swig3 flex zlib-devel eigen3-devel \
                 patchelf \
                 elfutils-devel elfutils-libelf-devel libdwarf-devel
 
@@ -114,6 +114,14 @@ jobs:
               cd /src
 
               source /opt/rh/devtoolset-11/enable
+
+              # Build Tcl 8.6 from source (CentOS 7 only ships 8.5)
+              curl -L https://prdownloads.sourceforge.net/tcl/tcl8.6.16-src.tar.gz | tar -xzC /tmp
+              cd /tmp/tcl8.6.16/unix
+              ./configure --prefix=/usr/local --enable-shared
+              make -j$(nproc)
+              make install
+              cd /src
 
               # Build CUDD
               curl -L https://raw.githubusercontent.com/davidkebo/cudd/main/cudd_versions/cudd-3.0.0.tar.gz | tar -xzC /tmp
