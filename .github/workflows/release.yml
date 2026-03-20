@@ -121,7 +121,6 @@ jobs:
               ./configure --prefix=/usr/local --enable-shared
               make -j$(nproc)
               make install
-              ldconfig
               ln -sf /usr/local/bin/tclsh8.6 /usr/local/bin/tclsh
               cd /src
 
