@@ -112,14 +112,14 @@ struct Visitor final: public LibertyGroupVisitor {
 			if (value->stringValue() == "false") {
 				return 0;
 			}
+			return value->stringValue();
 		}
 
-		auto [float_value, valid] = value->floatValue();
-		if (valid) {
-			return float_value;
-		}
-		if (value->isString()) {
-			return value->stringValue();
+		if (value->isFloat()) {
+			auto [float_value, valid] = value->floatValue();
+			if (valid) {
+				return float_value;
+			}
 		}
 
 		throw std::runtime_error("non-float or string attribute value");
