@@ -40,7 +40,7 @@ run-cmake-debug:
 test:
 	python3 -m venv venv
 	./venv/bin/python3 -m pip install pytest pytest-xdist
-	./venv/bin/pytest -n auto
+	./venv/bin/pytest -n auto -c /dev/null
 
 .PHONY: clean
 clean:

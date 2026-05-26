@@ -31,7 +31,7 @@
 using namespace sta;
 using namespace std::literals::string_literals;
 
-struct Visitor: public LibertyGroupVisitor {
+struct Visitor final: public LibertyGroupVisitor {
 	std::filesystem::path src_;
 	jsoncons::json_stream_encoder out_;
 	bool include_src_attributes_;
@@ -103,8 +103,30 @@ struct Visitor: public LibertyGroupVisitor {
 	{}
 	
 	~Visitor() {}
+
+	static jsoncons::json valueAsJson(const LibertyAttrValue *value) {
+		if (value->isString()) {
+			if (value->stringValue() == "true") {
+				return 1;
+			}
+			if (value->stringValue() == "false") {
+				return 0;
+			}
+		}
+
+		auto [float_value, valid] = value->floatValue();
+		if (valid) {
+			return float_value;
+		}
+		if (value->isString()) {
+			return value->stringValue();
+		}
+
+		throw std::runtime_error("non-float or string attribute value");
+	}
 	
-	void begin(LibertyGroup *group) {
+	void begin(const LibertyGroup *group, LibertyGroup *parent_group) override {
+		(void) parent_group;
 		if (stack_.size() && !stack_.top().subgroups_) {
 			stack_.top().subgroups_ = true;
 			out_.key("groups");
@@ -116,7 +138,8 @@ struct Visitor: public LibertyGroupVisitor {
 		out_.begin_object();
 	}
 
-	void end(LibertyGroup *group) {
+	void end(const LibertyGroup *group, LibertyGroup *parent_group) override {
+		(void) parent_group;
 		if (stack_top().subgroups_) {
 			out_.end_array();
 		}
@@ -129,13 +152,16 @@ struct Visitor: public LibertyGroupVisitor {
 			}
 		}
 		
-		auto params = group->params();
-		if (params) {
+		const auto &params = group->params();
+		if (!params.empty()) {
 			out_.key("names");
 			out_.begin_array();
-			for (auto param: *group->params()) {
+			for (auto param: params) {
 				if (param->isFloat()) {
-					out_.string_value(std::to_string(param->floatValue()));
+					auto [value, valid] = param->floatValue();
+					if (valid) {
+						out_.string_value(std::to_string(value));
+					}
 				} else {
 					out_.string_value(param->stringValue());
 				}
@@ -177,87 +203,68 @@ struct Visitor: public LibertyGroupVisitor {
 	}
 
 	void makeOrAppendDefine(
-		const char *name,
-		const char *allowed_group_name,
-		const char *valtype
+		std::string_view name,
+		std::string_view allowed_group_name,
+		std::string_view valtype
 	) {
 		auto &defines = stack_top().defines_;
-		auto it = defines.find(name);
+		string name_key(name);
+		auto it = defines.find(name_key);
 		if (it != defines.end() && it->second.allowed_group_name_.length() != 0) {
 			it->second.allowed_group_name_ += "|"s + string(allowed_group_name);
 			it->second.valtype_ = valtype;
 		} else {
-			defines[name] = Define {
-				allowed_group_name,
-				valtype
+			defines[name_key] = Define {
+				string(allowed_group_name),
+				string(valtype)
 			};
 		}
 	}
 
-	void visitAttr(LibertyAttr *attr) {
-		if (attr->isComplex()) {
-			auto values_p = attr->values();
-			if (strcmp(attr->name(), "define_group") == 0) {
-				if (values_p == nullptr) {
-					std::cerr << "WARNING: Malformed define_group on line " << attr->line() << ": no arguments provided." << std::endl;
-					return;
-				}
-				auto &values = *values_p;
-				if (values.size() < 2) {
-					std::cerr << "WARNING: Malformed define_group on line " << attr->line() << ": less than two arguments provided." << std::endl;
-					return;
-				}
-				
-				const char *valtype = "undefined_valuetype";
-				if (values.size() >= 3) {
-					valtype = values[2]->stringValue();
-				}
-				makeOrAppendDefine(
-					values[0]->stringValue(),
-					values[1]->stringValue(),
-					valtype
-				);
-			} else {
-				jsoncons::json values(jsoncons::json_array_arg);
-				if (values_p != nullptr) {
-					for (auto value: *values_p) {
-						if (value->isFloat()) {
-							values.push_back(value->floatValue());
-						} else if (value->isString()) {
-							values.push_back(value->stringValue());
-						}
-					}
-					
-				}
-				stack_top().attrs_[attr->name()] = values;
+	void visitAttr(const LibertySimpleAttr *attr) override {
+		const auto &value = attr->value();
+		stack_top().attrs_[attr->name()] = valueAsJson(&value);
+	}
+
+	void visitAttr(const LibertyComplexAttr *attr) override {
+		const auto &values = attr->values();
+		if (attr->name() == "define_group") {
+			if (values.empty()) {
+				std::cerr << "WARNING: Malformed define_group on line " << attr->line() << ": no arguments provided." << std::endl;
+				return;
 			}
+			if (values.size() < 2) {
+				std::cerr << "WARNING: Malformed define_group on line " << attr->line() << ": less than two arguments provided." << std::endl;
+				return;
+			}
+			
+			std::string_view valtype = "undefined_valuetype";
+			if (values.size() >= 3) {
+				valtype = values[2]->stringValue();
+			}
+			makeOrAppendDefine(
+				values[0]->stringValue(),
+				values[1]->stringValue(),
+				valtype
+			);
 		} else {
-			auto value = attr->firstValue();
-			if (value->isFloat()) {
-				stack_top().attrs_[attr->name()] = value->floatValue();
-			} else if (value->isString()) {
-				if (strcmp(value->stringValue(), "true") == 0) {
-					stack_top().attrs_[attr->name()] = 1;
-				} else if (strcmp(value->stringValue(), "false") == 0) {
-					stack_top().attrs_[attr->name()] = 0;
-				} else {
-					stack_top().attrs_[attr->name()] = value->stringValue();
-				}
-			} else {
-				// should be unreachable but just in case a freak bug happens from
-				// updating OpenSTA
-				throw std::runtime_error(string("non-float or string attribute ") + attr->name() + " at line " + std::to_string(attr->line()));
+			jsoncons::json json_values(jsoncons::json_array_arg);
+			for (auto value: values) {
+				json_values.push_back(valueAsJson(value));
 			}
+			
+			stack_top().attrs_[attr->name()] = json_values;
 		}
 	}
-	void visitVariable(LibertyVariable *variable) {
+
+	void visitVariable(LibertyVariable *variable) override {
 		stack_top().variables_.push_back({
 				variable->variable(),
 				variable->value()
 		});
 	}
 
-	void visitDefine(LibertyDefine *define) {
+	void visitDefine(LibertyDefine *define) override {
 		auto groupTypeRaw = string(define->groupTypeRaw());
 		makeOrAppendDefine(
 			define->name(),
@@ -265,10 +272,6 @@ struct Visitor: public LibertyGroupVisitor {
 			attrTypeName(define->valueType())
 		);
 	}
-	// Predicates to save parse structure after visits.
-	bool save(LibertyGroup *group) { return false; }
-	bool save(LibertyAttr *attr) { return false; }
-	bool save(LibertyVariable *variable) { return false; }
 };
 
 STALibertyTranslator::STALibertyTranslator(
