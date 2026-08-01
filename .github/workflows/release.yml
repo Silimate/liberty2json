@@ -4,305 +4,73 @@ on:
   push:
     branches:
       - main
+  pull_request:
   workflow_dispatch:
+    inputs:
+      draft:
+        description: Publish a draft release and leave the `latest` tag alone.
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
-    name: Build anylinux amd64 tarball (musl)
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: true
-
-      - name: Build in Alpine container
-        run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/src" \
-            -w /src \
-            --platform linux/amd64 \
-            alpine:3.20 sh -c '
-              set -ex
-              apk add --no-cache \
-                build-base cmake git curl \
-                tcl-dev swig bison flex flex-dev \
-                libdwarf-dev elfutils-dev zlib-dev eigen-dev \
-                automake autoconf libtool patchelf
-              curl -L https://raw.githubusercontent.com/davidkebo/cudd/main/cudd_versions/cudd-3.0.0.tar.gz | tar -xzC /tmp
-              cd /tmp/cudd-3.0.0
-              ./configure
-              make -j$(nproc)
-              make install
-              cd /src
-              git config --global --add safe.directory /src
-              git config --global --add safe.directory /src/third_party/opensta
-              git config --global --add safe.directory /src/third_party/backward-cpp
-              cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -S . -B build
-              cmake --build build -j$(nproc)
-              mkdir -p /tmp/install/usr/local/bin /tmp/install/usr/local/lib
-              cp build/liberty2json /tmp/install/usr/local/bin/
-
-              # Bundle shared library dependencies and set RPATHs
-              STAGE=/tmp/install/usr/local
-              for f in "$STAGE"/bin/*; do
-                [ -f "$f" ] || continue
-                ldd "$f" 2>/dev/null | awk "/=>/ {print \$3}" | while read -r lib; do
-                  [ -f "$lib" ] || continue
-                  base=$(basename "$lib")
-                  case "$base" in ld-musl-*|libc.musl-*) continue ;; esac
-                  [ -f "$STAGE/lib/$base" ] || cp "$lib" "$STAGE/lib/$base"
-                done
-                patchelf --set-rpath "\$ORIGIN/../lib" "$f"
-              done
-              for f in "$STAGE"/lib/*.so*; do
-                [ -f "$f" ] && patchelf --set-rpath "\$ORIGIN" "$f" 2>/dev/null || true
-              done
-
-              cd /tmp/install
-              tar czf /src/liberty2json-anylinux-amd64.tar.gz .
-            '
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: linux-tarball
-          path: liberty2json-anylinux-amd64.tar.gz
-
-  build-manylinux:
-    runs-on: ubuntu-latest
-    name: Build manylinux2014 amd64 tarball (glibc 2.17+)
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: true
-
-      - name: Build in CentOS 7 container
-        run: |
-          docker run --rm \
-            -v "${{ github.workspace }}:/src" \
-            -w /src \
-            --platform linux/amd64 \
-            centos:7 bash -c '
-              set -ex
-
-              sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo
-              sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo
-              sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
-
-              yum install -y centos-release-scl epel-release
-              sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo
-              sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo
-              sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
-
-              yum install -y devtoolset-11-gcc-c++ make git curl \
-                swig3 flex zlib-devel eigen3-devel \
-                patchelf \
-                elfutils-devel elfutils-libelf-devel libdwarf-devel
-
-              curl -L https://github.com/Kitware/CMake/releases/download/v3.31.4/cmake-3.31.4-linux-x86_64.tar.gz | tar -xzC /opt
-              export PATH=/opt/cmake-3.31.4-linux-x86_64/bin:$PATH
-
-              # Build bison >= 3.x from source
-              curl -L https://ftp.gnu.org/gnu/bison/bison-3.8.2.tar.gz | tar -xzC /tmp
-              cd /tmp/bison-3.8.2 && source /opt/rh/devtoolset-11/enable && ./configure && make -j$(nproc) && make install
-              cd /src
-
-              source /opt/rh/devtoolset-11/enable
-
-              # Build Tcl 8.6 from source (CentOS 7 only ships 8.5)
-              curl -L https://prdownloads.sourceforge.net/tcl/tcl8.6.16-src.tar.gz | tar -xzC /tmp
-              cd /tmp/tcl8.6.16/unix
-              ./configure --prefix=/usr/local --enable-shared
-              make -j$(nproc)
-              make install
-              ln -sf /usr/local/bin/tclsh8.6 /usr/local/bin/tclsh
-              cd /src
-
-              # Build CUDD
-              curl -L https://raw.githubusercontent.com/davidkebo/cudd/main/cudd_versions/cudd-3.0.0.tar.gz | tar -xzC /tmp
-              cd /tmp/cudd-3.0.0
-              ./configure
-              make -j$(nproc)
-              make install
-              cd /src
-
-              git config --global --add safe.directory /src
-              git config --global --add safe.directory /src/third_party/opensta
-              git config --global --add safe.directory /src/third_party/backward-cpp
-              cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local -S . -B build
-              cmake --build build -j$(nproc)
-              mkdir -p /tmp/install/usr/local/bin /tmp/install/usr/local/lib
-              cp build/liberty2json /tmp/install/usr/local/bin/
-
-              STAGE=/tmp/install/usr/local
-              for f in "$STAGE"/bin/*; do
-                [ -f "$f" ] || continue
-                ldd "$f" 2>/dev/null | awk "/=>/ {print \$3}" | while read -r lib; do
-                  [ -f "$lib" ] || continue
-                  base=$(basename "$lib")
-                  case "$base" in ld-linux*|libc.so*|libdl*|libpthread*|librt*|libm.so*) continue ;; esac
-                  [ -f "$STAGE/lib/$base" ] || cp "$lib" "$STAGE/lib/$base"
-                done
-                patchelf --set-rpath "\$ORIGIN/../lib" "$f"
-              done
-              for f in "$STAGE"/lib/*.so*; do
-                [ -f "$f" ] && patchelf --set-rpath "\$ORIGIN" "$f" 2>/dev/null || true
-              done
-
-              cd /tmp/install
-              tar czf /src/liberty2json-manylinux2014-amd64.tar.gz .
-            '
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: manylinux-tarball
-          path: liberty2json-manylinux2014-amd64.tar.gz
-
-  build-macos:
-    runs-on: macos-15
-    name: Build macOS arm64 tarball
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          submodules: true
-
-      - name: Install dependencies
-        run: |
-          brew install cmake eigen tcl-tk@8 swig bison flex
-
-      - name: Build CUDD from source
-        run: |
-          curl -L https://raw.githubusercontent.com/davidkebo/cudd/main/cudd_versions/cudd-3.0.0.tar.gz | tar -xzC /tmp
-          cd /tmp/cudd-3.0.0
-          ./configure
-          make -j$(sysctl -n hw.ncpu)
-          sudo make install
-
-      - name: Build liberty2json
-        run: |
-          export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH"
-          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local \
-            -DTCL_LIBRARY=$(brew --prefix tcl-tk@8)/lib/libtcl8.6.dylib \
-            -DTCL_INCLUDE_PATH=$(brew --prefix tcl-tk@8)/include/tcl-tk \
-            -DFLEX_INCLUDE_DIR=$(brew --prefix flex)/include \
-            -S . -B build
-          cmake --build build -j$(sysctl -n hw.ncpu)
-
-      - name: Package tarball
-        run: |
-          mkdir -p /tmp/install/usr/local/bin /tmp/install/usr/local/lib
-          cp build/liberty2json /tmp/install/usr/local/bin/
-
-          # Bundle non-system dylibs
-          STAGE=/tmp/install/usr/local
-          for f in "$STAGE"/bin/*; do
-            [ -f "$f" ] || continue
-            otool -L "$f" | awk '/^\t/ {print $1}' | while read -r lib; do
-              case "$lib" in
-                /usr/lib/*|/System/*|@*) continue ;;
-              esac
-              base=$(basename "$lib")
-              [ -f "$STAGE/lib/$base" ] || cp "$lib" "$STAGE/lib/$base"
-              install_name_tool -change "$lib" "@executable_path/../lib/$base" "$f"
-            done
-          done
-          for f in "$STAGE"/lib/*.dylib; do
-            [ -f "$f" ] || continue
-            install_name_tool -id "@loader_path/$(basename "$f")" "$f"
-            otool -L "$f" | awk '/^\t/ {print $1}' | while read -r lib; do
-              case "$lib" in
-                /usr/lib/*|/System/*|@*) continue ;;
-              esac
-              base=$(basename "$lib")
-              [ -f "$STAGE/lib/$base" ] || cp "$lib" "$STAGE/lib/$base"
-              install_name_tool -change "$lib" "@loader_path/$base" "$f"
-            done
-          done
-
-          cd /tmp/install
-          tar czf "${{ github.workspace }}/liberty2json-macos-arm64.tar.gz" .
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: macos-tarball
-          path: liberty2json-macos-arm64.tar.gz
-
   release:
-    runs-on: ubuntu-latest
-    needs: [build-linux, build-manylinux, build-macos]
-    name: Create GitHub releases
+    uses: Silimate/actions/.github/workflows/native-tarball-release.yml@v1
+    permissions:
+      contents: write
+    with:
+      product: liberty2json
+      # Only publish from main; pull requests build and smoke-test but release nothing
+      publish: ${{ github.event_name != 'pull_request' }}
+      draft: ${{ inputs.draft || false }}
+      alpine-packages: >-
+        curl tcl-dev swig bison flex flex-dev libdwarf-dev elfutils-dev
+        zlib-dev eigen-dev automake autoconf libtool
+      centos-packages: >-
+        swig3 flex zlib-devel eigen3-devel elfutils-devel
+        elfutils-libelf-devel libdwarf-devel
+      macos-packages: cmake eigen tcl-tk@8 swig bison flex
+      build-script: |
+        set -e
 
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+        # CentOS 7 predates everything this build needs, so bison and Tcl come
+        # from source there. Alpine and Homebrew package both.
+        if [ "$PLATFORM" = "manylinux2014-amd64" ]; then
+          curl -fL https://ftp.gnu.org/gnu/bison/bison-3.8.2.tar.gz | tar -xzC /tmp
+          (cd /tmp/bison-3.8.2 && ./configure && make -j"$NPROC" && make install)
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: linux-tarball
+          # CentOS 7 only ships Tcl 8.5
+          curl -fL https://prdownloads.sourceforge.net/tcl/tcl8.6.16-src.tar.gz | tar -xzC /tmp
+          (cd /tmp/tcl8.6.16/unix && ./configure --prefix=/usr/local --enable-shared \
+            && make -j"$NPROC" && make install)
+          ln -sf /usr/local/bin/tclsh8.6 /usr/local/bin/tclsh
+        fi
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: manylinux-tarball
+        # No distro packages CUDD, so it is always built from source
+        "$SILIMATE_ACTIONS_DIR/scripts/install-cudd.sh"
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: macos-tarball
+        if [ "$PLATFORM" = "macos-arm64" ]; then
+          export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH"
+          set -- \
+            "-DTCL_LIBRARY=$(brew --prefix tcl-tk@8)/lib/libtcl8.6.dylib" \
+            "-DTCL_INCLUDE_PATH=$(brew --prefix tcl-tk@8)/include/tcl-tk" \
+            "-DFLEX_INCLUDE_DIR=$(brew --prefix flex)/include"
+        fi
 
-      - name: Generate release notes
-        id: meta
-        run: |
-          SHORT_SHA=$(git rev-parse --short HEAD)
-          FULL_SHA=$(git rev-parse HEAD)
-          DATE=$(date -u +%Y-%m-%d)
-          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
-          echo "date=$DATE" >> "$GITHUB_OUTPUT"
-          REPO_URL="${{ github.server_url }}/${{ github.repository }}"
-          printf '%s\n' \
-            "Automated build from \`main\` @ [\`${SHORT_SHA}\`](${REPO_URL}/commit/${FULL_SHA})" \
-            "" \
-            "| Platform | File | Install |" \
-            "|----------|------|---------|" \
-            "| Linux amd64 (musl, portable) | \`liberty2json-anylinux-amd64.tar.gz\` | \`sudo tar xzf liberty2json-anylinux-amd64.tar.gz -C /\` |" \
-            "| Linux amd64 (manylinux2014, glibc 2.17+) | \`liberty2json-manylinux2014-amd64.tar.gz\` | \`sudo tar xzf liberty2json-manylinux2014-amd64.tar.gz -C /\` |" \
-            "| macOS arm64 (Apple Silicon) | \`liberty2json-macos-arm64.tar.gz\` | \`sudo tar xzf liberty2json-macos-arm64.tar.gz -C /\` |" \
-            "" \
-            "**Built:** ${DATE}" \
-            > release_notes.md
-
-      - name: Create permanent release
-        run: |
-          TAG="build-${{ steps.meta.outputs.date }}-${{ steps.meta.outputs.short_sha }}"
-          gh release create "$TAG" \
-            liberty2json-anylinux-amd64.tar.gz \
-            liberty2json-manylinux2014-amd64.tar.gz \
-            liberty2json-macos-arm64.tar.gz \
-            --target "${{ github.sha }}" \
-            --title "Build ${{ steps.meta.outputs.date }} (${{ steps.meta.outputs.short_sha }})" \
-            --notes-file release_notes.md
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Update latest release
-        run: |
-          git tag -f latest HEAD
-          git push -f origin latest
-          gh release delete latest --yes 2>/dev/null || true
-          gh release create latest \
-            liberty2json-anylinux-amd64.tar.gz \
-            liberty2json-manylinux2014-amd64.tar.gz \
-            liberty2json-macos-arm64.tar.gz \
-            --target "${{ github.sha }}" \
-            --title "Latest Build (${{ steps.meta.outputs.date }})" \
-            --notes-file release_notes.md \
-            --prerelease
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local "$@" -S . -B build
+        cmake --build build -j"$NPROC"
+        cp build/liberty2json "$STAGE/bin/"
+      smoke-test: |
+        # Extract to a throwaway prefix so the binary can only resolve its
+        # libraries through the RPATHs the bundling step set, exactly as a user
+        # would after unpacking the archive
+        rm -rf /tmp/smoke && mkdir -p /tmp/smoke
+        tar xzf "$TARBALL" -C /tmp/smoke
+        /tmp/smoke/usr/local/bin/liberty2json --help > /tmp/smoke/out.log 2>&1 || true
+        test -s /tmp/smoke/out.log
