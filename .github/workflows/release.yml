@@ -38,22 +38,16 @@ jobs:
       macos-packages: cmake eigen tcl-tk@8 swig bison flex
       build-script: |
         set -e
+        SCRIPTS="$SILIMATE_ACTIONS_DIR/scripts"
 
-        # CentOS 7 predates everything this build needs, so bison and Tcl come
-        # from source there. Alpine and Homebrew package both.
+        # CentOS 7 predates bison 3.x and Tcl 8.6; Alpine and Homebrew package both
         if [ "$PLATFORM" = "manylinux2014-amd64" ]; then
-          curl -fL https://ftp.gnu.org/gnu/bison/bison-3.8.2.tar.gz | tar -xzC /tmp
-          (cd /tmp/bison-3.8.2 && ./configure && make -j"$NPROC" && make install)
-
-          # CentOS 7 only ships Tcl 8.5
-          curl -fL https://prdownloads.sourceforge.net/tcl/tcl8.6.16-src.tar.gz | tar -xzC /tmp
-          (cd /tmp/tcl8.6.16/unix && ./configure --prefix=/usr/local --enable-shared \
-            && make -j"$NPROC" && make install)
-          ln -sf /usr/local/bin/tclsh8.6 /usr/local/bin/tclsh
+          "$SCRIPTS/install-bison.sh"
+          "$SCRIPTS/install-tcl.sh"
         fi
 
         # No distro packages CUDD, so it is always built from source
-        "$SILIMATE_ACTIONS_DIR/scripts/install-cudd.sh"
+        "$SCRIPTS/install-cudd.sh"
 
         if [ "$PLATFORM" = "macos-arm64" ]; then
           export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH"
