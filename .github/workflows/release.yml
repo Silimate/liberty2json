@@ -66,5 +66,5 @@ jobs:
         # would after unpacking the archive
         rm -rf /tmp/smoke && mkdir -p /tmp/smoke
         tar xzf "$TARBALL" -C /tmp/smoke
-        /tmp/smoke/usr/local/bin/liberty2json --help > /tmp/smoke/out.log 2>&1 || true
+        /tmp/smoke/usr/local/bin/liberty2json --help > /tmp/smoke/out.log 2>&1
         test -s /tmp/smoke/out.log
