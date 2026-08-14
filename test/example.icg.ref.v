@@ -4,7 +4,7 @@
 (* LeakagePower = "0" *)
 (* area = "0.26244" *)
 (* blackbox =  1  *)
-module ICGx1_ASAP7_75t_L(GCLK, CLK, ENA, SE);
+module ICGx1_ASAP7_75t_L(GCLK, CLK, ENA, SE, VDD, VSS);
   output GCLK;
   wire GCLK;
   input CLK;
@@ -13,4 +13,10 @@ module ICGx1_ASAP7_75t_L(GCLK, CLK, ENA, SE);
   wire ENA;
   input SE;
   wire SE;
+  (* pg_type = "primary_power" *)
+  input VDD;
+  wire VDD;
+  (* pg_type = "primary_ground" *)
+  input VSS;
+  wire VSS;
 endmodule

@@ -15,16 +15,20 @@ endmodule
 (* LeakagePower = "0" *)
 (* area = "0" *)
 (* blackbox =  1  *)
-module cell2(pin1);
+module cell2(pin1, pin2);
   input pin1;
   wire pin1;
+  input pin2;
+  wire pin2;
 endmodule
 
 (* leakage_power_unit = "1pW" *)
 (* LeakagePower = "0" *)
 (* area = "0" *)
 (* blackbox =  1  *)
-module cell3(pin1);
+module cell3(pin1, pin2);
   input pin1;
   wire pin1;
+  input pin2;
+  wire pin2;
 endmodule
