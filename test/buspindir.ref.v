@@ -5,11 +5,17 @@
 (* area = "1.0" *)
 (* memory =  1  *)
 (* blackbox =  1  *)
-module myram(CLK, DI, DO);
+module myram(CLK, DI, DO, VDD, VSS);
   input CLK;
   wire CLK;
   input [49:0] DI;
   wire [49:0] DI;
   output [49:0] DO;
   wire [49:0] DO;
+  (* pg_type = "primary_power" *)
+  input VDD;
+  wire VDD;
+  (* pg_type = "primary_ground" *)
+  input VSS;
+  wire VSS;
 endmodule
