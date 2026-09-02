@@ -5,13 +5,12 @@ import pytest
 import logging
 import functools
 import subprocess
-from types import NoneType
 from itertools import zip_longest
 from typing import Dict, List, Optional, Union
 
 whitespace_rx = re.compile(r"(\n|\s|\t|\\\n)+")
 
-JsonTypes = Union[Dict, List, float, int, str, bool, NoneType]
+JsonTypes = Union[Dict, List, float, int, str, bool, None]
 
 
 def deep_compare(lhs: JsonTypes, rhs: JsonTypes):
