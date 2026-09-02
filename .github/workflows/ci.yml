@@ -59,10 +59,11 @@ jobs:
       - if: ${{ matrix.os.family == 'macos' }}
         name: Brew Dependencies
         run: |
-          cd third_party/opensta
           brew bundle install
-          echo "PATH=$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH" >> $GITHUB_ENV
-          echo "CMAKE_ARGS=-DTCL_LIBRARY=$(brew --prefix tcl-tk@8)/lib/libtcl8.6.dylib -DTCL_INCLUDE_PATH=$(brew --prefix tcl-tk@8)/include/tcl-tk -DFLEX_INCLUDE_DIR=$(brew --prefix flex)/include" >> $GITHUB_ENV
+          eval $(brew bundle env)
+          echo "CMAKE_INCLUDE_PATH=$(brew --prefix dwarfutils)/include/libdwarf-2:$(brew --prefix libelf)/include/libelf" >> $GITHUB_ENV
+          echo "CMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" >> $GITHUB_ENV
+          echo "PATH=$PATH" >> $GITHUB_ENV
       - if: ${{ matrix.os.family == 'linux' }}
         name: Apt Dependencies
         run: |

@@ -66,32 +66,12 @@ brew bundle install
 
 ```bash
 cd ~/liberty2json
-export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH"
-make run-cmake-release ADDITIONAL_CMAKE_OPTIONS="-DTCL_LIBRARY=$(brew --prefix tcl-tk@8)/lib/libtcl8.6.dylib -DTCL_INCLUDE_PATH=$(brew --prefix tcl-tk@8)/include/tcl-tk -DFLEX_INCLUDE_DIR=$(brew --prefix flex)/include"
+brew bundle sh
+export CMAKE_INCLUDE_PATH="$(brew --prefix dwarfutils)/include/libdwarf-2:$(brew --prefix libelf)/include/libelf"
+make run-cmake-release
 make release
 ```
 
-
-### Test
-
-```bash
-make test
-```
-
-
-## Nix (Development Only)
-
-### Dependencies
-
-```bash
-nix develop
-```
-
-### Build
-
-```bash
-make release ADDITIONAL_CMAKE_OPTIONS="$cmakeFlags"
-```
 
 ### Test
 
