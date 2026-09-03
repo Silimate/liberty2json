@@ -1,4 +1,4 @@
-name: "Release (anylinux amd64 + manylinux2014 amd64 + macOS arm64)"
+name: "Release (anylinux amd64 + manylinux_2_28 amd64 + macOS arm64)"
 
 on:
   push:
@@ -6,65 +6,143 @@ on:
       - main
   pull_request:
   workflow_dispatch:
-    inputs:
-      draft:
-        description: Publish a draft release and leave the `latest` tag alone.
-        type: boolean
-        default: false
-
-permissions:
-  contents: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Behavior:
+  # - Group all pull requests: latest push cancels previous ones
+  # - Group all branches: run serially
+  group: >
+    wheel-${{
+      (github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number)) ||
+      ((github.event_name == 'push' || github.event_name == 'workflow_dispatch') && 'release') ||
+      ''
+    }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: '${{ steps.info.outputs.version }}'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: info
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BASE_VER=$(git show HEAD -q --format="%cs" | tr -d '\n' | tr '-' '.')
+          COUNTER=0
+          CURRENT_VER=$BASE_VER
+          while gh release view "v$CURRENT_VER" > /dev/null 2>&1; do
+            COUNTER=$(expr $COUNTER + 1)
+            CURRENT_VER=$BASE_VER.post$COUNTER
+          done
+          echo "Found unused version $CURRENT_VER."
+          echo "version=$CURRENT_VER" >> $GITHUB_OUTPUT
+  wheel-build:
+    needs: [version]
+    strategy:
+      matrix:
+        os:
+          [
+            {
+              name: "ubuntu",
+              runner: "ubuntu-24.04",
+              arch: "x86_64",
+            },
+            {
+              name: "macos",
+              runner: "macos-15",
+              arch: "arm64",
+            },
+          ]
+    name: Build and Test Binary Wheels | ${{ matrix.os.name }}
+    runs-on: ${{ matrix.os.runner }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: true
+      - if: ${{ matrix.os.name == 'macos' && matrix.os.arch == 'arm64' }}
+        name: "[macOS/arm64] Install Python 3.8 (see: https://cibuildwheel.pypa.io/en/v3.4.1/faq/#macos-building-cpython-38-wheels-on-arm64)"
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.8
+      - if: ${{ matrix.os.name == 'macos' }}
+        # install various dependencies via brew
+        # NOTE: intentionally uninstalling cudd so that the fallback behavior
+        #       in build_wheel remains tested
+        run: |
+          brew bundle install
+          brew uninstall cudd
+          echo "$(brew --prefix tcl-tk@8)/bin" >> $GITHUB_PATH
+          echo "$(brew --prefix flex)/bin" >> $GITHUB_PATH
+          echo "$(brew --prefix bison)/bin" >> $GITHUB_PATH
+          echo "CMAKE_PREFIX_PATH=$(brew --prefix tcl-tk@8):$(brew --prefix flex):$(brew --prefix bison):$(brew --prefix dwarfutils):$(brew --prefix libelf)" >> $GITHUB_ENV
+          echo "CMAKE_INCLUDE_PATH=$(brew --prefix dwarfutils)/include/libdwarf-2:$(brew --prefix libelf)/include/libelf" >> $GITHUB_ENV
+      - name: Build wheels
+        uses: pypa/cibuildwheel@v4.2.0
+        with:
+          # Explicit so it can't drift from the upload path below
+          output-dir: dist
+        env:
+          CIBW_ARCHS: ${{ matrix.os.arch }}
+          CIBW_BUILD_VERBOSITY: "1"
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
+          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
+          CIBW_BEFORE_ALL_LINUX: bash ./wheel_build/before_all_linux.sh
+          # can technically deploy to macOS 11 still but would have to build all
+          # of these manually:
+          #  tcl-tk, readline, tcl-readline, dwarf
+          # a minimum macOS 15 (2024) requirement is reasonable
+          CIBW_ENVIRONMENT: >
+            MACOSX_DEPLOYMENT_TARGET=15
+            LIBERTY2JSON_WHEEL_VERSION=${{ needs.version.outputs.version }}
+          # smoke test - full functionality test in other workflow
+          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_COMMAND: cd {project} && PYTEST_L2J_BIN=liberty2json pytest
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-wheels-${{ matrix.os.name }}-${{ matrix.os.arch }}
+          path: dist/*
+          if-no-files-found: error
   release:
-    uses: Silimate/actions/.github/workflows/native-tarball-release.yml@v1
+    runs-on: ubuntu-24.04
+    name: Create release
+    needs: [version, wheel-build]
+    if: github.event_name != 'pull_request'
     permissions:
       contents: write
-    with:
-      product: liberty2json
-      # Only publish from main; pull requests build and smoke-test but release nothing
-      publish: ${{ github.event_name != 'pull_request' }}
-      draft: ${{ inputs.draft || false }}
-      alpine-packages: >-
-        curl tcl-dev swig bison flex flex-dev libdwarf-dev elfutils-dev
-        zlib-dev eigen-dev automake autoconf libtool
-      centos-packages: >-
-        swig3 flex zlib-devel eigen3-devel elfutils-devel
-        elfutils-libelf-devel libdwarf-devel
-      macos-packages: cmake eigen tcl-tk@8 swig bison flex
-      build-script: |
-        set -e
-        SCRIPTS="$SILIMATE_ACTIONS_DIR/scripts"
-
-        # CentOS 7 predates bison 3.x and Tcl 8.6; Alpine and Homebrew package both
-        if [ "$PLATFORM" = "manylinux2014-amd64" ]; then
-          "$SCRIPTS/install-bison.sh"
-          "$SCRIPTS/install-tcl.sh"
-        fi
-
-        # No distro packages CUDD, so it is always built from source
-        "$SCRIPTS/install-cudd.sh"
-
-        if [ "$PLATFORM" = "macos-arm64" ]; then
-          export PATH="$(brew --prefix bison)/bin:$(brew --prefix flex)/bin:$PATH"
-          set -- \
-            "-DTCL_LIBRARY=$(brew --prefix tcl-tk@8)/lib/libtcl8.6.dylib" \
-            "-DTCL_INCLUDE_PATH=$(brew --prefix tcl-tk@8)/include/tcl-tk" \
-            "-DFLEX_INCLUDE_DIR=$(brew --prefix flex)/include"
-        fi
-
-        cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr/local "$@" -S . -B build
-        cmake --build build -j"$NPROC"
-        cp build/liberty2json "$STAGE/bin/"
-      smoke-test: |
-        # Extract to a throwaway prefix so the binary can only resolve its
-        # libraries through the RPATHs the bundling step set, exactly as a user
-        # would after unpacking the archive
-        rm -rf /tmp/smoke && mkdir -p /tmp/smoke
-        tar xzf "$TARBALL" -C /tmp/smoke
-        /tmp/smoke/usr/local/bin/liberty2json --help > /tmp/smoke/out.log 2>&1
-        test -s /tmp/smoke/out.log
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: Download all wheel artifacts
+        uses: actions/download-artifact@v8
+        with:
+          path: dist
+          pattern: python-wheels-*
+          merge-multiple: true
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: '${{ needs.version.outputs.version }}'
+        run: |
+          gh release create "v$TAG" dist/*.whl \
+            --prerelease \
+            --repo '${{ github.repository }}' \
+            --target '${{ github.sha }}' \
+            --generate-notes \
+            --notes 'Automated build based on commit ${{ github.sha }}'
+      - name: Upload Wheels to Silimate Download Server
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SILIMATE_SERVER_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p $PWD/ssh
+          echo "$SERVER_SSH_KEY" > $PWD/ssh/key
+          chmod 600 $PWD/ssh/key
+          SSH_OPTS="-o StrictHostKeyChecking=no -o ConnectTimeout=15 -i $PWD/ssh/key"
+          rsync --verbose --rsh="ssh $SSH_OPTS" --recursive $PWD/dist/\
+            ubuntu@downloads.silimate.com:/usr/share/nginx/pypi/liberty2json/

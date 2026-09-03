@@ -41,6 +41,8 @@
 /venv
 /.venv
 *.pyc
+wheelhouse
+*.whl
 
 # devenv
 .devenv*
