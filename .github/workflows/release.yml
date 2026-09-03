@@ -1,4 +1,4 @@
-name: "Release (anylinux amd64 + manylinux2014 amd64 + macOS arm64)"
+name: "Release (anylinux amd64 + manylinux_2_28 amd64 + macOS arm64)"
 
 on:
   push:
