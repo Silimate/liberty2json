@@ -1,4 +1,4 @@
-name: "Release (anylinux amd64 + manylinux_2_28 amd64 + macOS arm64)"
+name: "Release (anylinux amd64 + manylinux2014 amd64 + macOS arm64)"
 
 on:
   push:
@@ -90,19 +90,23 @@ jobs:
         env:
           CIBW_ARCHS: ${{ matrix.os.arch }}
           CIBW_BUILD_VERBOSITY: "1"
-          CIBW_MANYLINUX_X86_64_IMAGE: manylinux_2_28
-          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux_2_28
+          CIBW_MANYLINUX_X86_64_IMAGE: manylinux2014
+          CIBW_MANYLINUX_AARCH64_IMAGE: manylinux2014
           CIBW_BEFORE_ALL_LINUX: bash ./wheel_build/before_all_linux.sh
           # can technically deploy to macOS 11 still but would have to build all
           # of these manually:
-          #  tcl-tk, readline, tcl-readline, dwarf
+          #  tcl-tk, dwarf
           # a minimum macOS 15 (2024) requirement is reasonable
           CIBW_ENVIRONMENT: >
             MACOSX_DEPLOYMENT_TARGET=15
             LIBERTY2JSON_WHEEL_VERSION=${{ needs.version.outputs.version }}
-          # smoke test - full functionality test in other workflow
+          CIBW_ENVIRONMENT_LINUX: >
+            PATH=/opt/rh/devtoolset-11/root/usr/bin:$PATH
+            LD_LIBRARY_PATH=/opt/rh/devtoolset-11/root/lib64:$LD_LIBRARY_PATH
+            PKG_CONFIG_PATH=/opt/rh/devtoolset-11/root/usr/lib64/pkgconfig:$PKG_CONFIG_PATH
+            SILISIZER_WHEEL_VERSION=${{ needs.version.outputs.version }}
           CIBW_TEST_REQUIRES: pytest
-          CIBW_TEST_COMMAND: cd {project} && PYTEST_L2J_BIN=liberty2json pytest
+          CIBW_TEST_COMMAND: (cd {project} && PYTEST_L2J_BIN=liberty2json pytest)
       - uses: actions/upload-artifact@v7
         with:
           name: python-wheels-${{ matrix.os.name }}-${{ matrix.os.arch }}

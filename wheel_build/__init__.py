@@ -123,7 +123,15 @@ def get_metadata_files():
     (see https://packaging.python.org/en/latest/specifications/recording-installed-packages/)
     """
     with open("README.md", "rb") as readme:
-        long_description = readme.read()
+        copyright_notice = f"""\
+Silimate Wheel Note: only the Python wrapper for Liberty2JSON is under the MIT
+license for linking purposes.
+
+The bundled binary for Liberty2JSON remains under the GNU General Public License
+version 3. See '{PROJECT_NAME}/liberty2json.COPYING'.
+
+"""
+        long_description = copyright_notice.encode("utf8") + readme.read()
 
     return {
         "WHEEL": make_message(
@@ -235,6 +243,11 @@ def build_wheel(wheel_dir, config_settings=None, metadata_directory=None):
                 "wheel_build/liberty2json/__main__.py", f"{PROJECT_NAME}/__main__.py"
             )
 
+            wheel.write(
+                "third_party/opensta/LICENSE",
+                f"{PROJECT_NAME}/liberty2json.COPYING",
+            )
+
             # configure
             env = os.environ.copy()
             env["CMAKE_PREFIX_PATH"] = cmake_prefix_path
@@ -255,7 +268,8 @@ def build_wheel(wheel_dir, config_settings=None, metadata_directory=None):
                     "--build",
                     d,
                     f"-j{os.cpu_count()}",
-                    "--target", "liberty2json",
+                    "--target",
+                    "liberty2json",
                 ]
             )
 

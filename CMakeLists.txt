@@ -2,7 +2,7 @@
 # Project setup
 ###############################################################################
 
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16) # match OpenSTA
 project(Liberty2JSON C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -24,6 +24,11 @@ set(CMAKE_CXX_FLAGS_RELEASE
 )
 
 set (CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}})
+
+# ipa icf pass segfaults in GCC 11
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12.0")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-ipa-icf")
+endif()
 
 ###############################################################################
 # Libraries
