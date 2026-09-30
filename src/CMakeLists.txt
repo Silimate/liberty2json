@@ -23,7 +23,6 @@ target_link_libraries(liberty2json PUBLIC
     Backward::Interface
     OpenSTA
     z
-    scope_guard
     jsoncons
 )
 if(CMAKE_SYSTEM_NAME MATCHES "Linux" AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang" AND NOT BUILD_SHARED_LIBS)

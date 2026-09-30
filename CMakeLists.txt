@@ -43,7 +43,6 @@ target_include_directories(backward_interface INTERFACE /usr/include/libdwarf/)
 add_subdirectory(third_party/opensta)
 set(JSONCONS_BUILD_TESTS OFF)
 add_subdirectory(third_party/jsoncons)
-add_subdirectory(third_party/scope_guard)
 
 ###############################################################################
 # Add the 'src' subdirectory
