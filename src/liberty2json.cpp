@@ -23,8 +23,6 @@
 
 #include "Sta.hh"
 
-#include <scope_guard.hpp>
-
 #include <memory>
 #include <iostream>
 #include <fstream>
@@ -57,22 +55,20 @@ int main(int argc, char *argv[]) {
 	sta::Sta::setSta(sta);
 	sta->makeComponents();
 	
-	std::ostream *out_stream = nullptr;
-	MAKE_SCOPE_EXIT(scope_exit) {
-		delete out_stream;
-	};
+	// Declared before parser so it outlives the encoder's final flush on destruction
+	std::ofstream file;
+	std::ostream *out_stream = &std::cout;
 	if (program.is_used("--outfile")) {
-		out_stream = new std::ofstream(program.get<string>("--outfile"));
+		file.open(program.get<string>("--outfile"));
+		out_stream = &file;
 	} else if (program.get<bool>("--check")) {
 #if defined(_WIN32)
-		out_stream = new std::ofstream("NUL");
+		file.open("NUL");
 #else
 		// Assume UNIX
-		out_stream = new std::ofstream("/dev/null");
+		file.open("/dev/null");
 #endif
-	} else {
-		out_stream = &std::cout;
-		scope_exit.dismiss();
+		out_stream = &file;
 	}
 	
 	auto parser = std::make_shared<STALibertyTranslator>(
