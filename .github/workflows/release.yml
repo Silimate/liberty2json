@@ -104,7 +104,7 @@ jobs:
             PATH=/opt/rh/devtoolset-11/root/usr/bin:$PATH
             LD_LIBRARY_PATH=/opt/rh/devtoolset-11/root/lib64:$LD_LIBRARY_PATH
             PKG_CONFIG_PATH=/opt/rh/devtoolset-11/root/usr/lib64/pkgconfig:$PKG_CONFIG_PATH
-            SILISIZER_WHEEL_VERSION=${{ needs.version.outputs.version }}
+            LIBERTY2JSON_WHEEL_VERSION=${{ needs.version.outputs.version }}
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: (cd {project} && PYTEST_L2J_BIN=liberty2json pytest)
       - uses: actions/upload-artifact@v7
