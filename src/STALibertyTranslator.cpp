@@ -149,11 +149,19 @@ struct Visitor final: public LibertyGroupVisitor {
 	}
 
 	void end(const LibertyGroup *group, LibertyGroup *parent_group) override {
-		(void) parent_group;
 		if (skip_depth_) {
 			skip_depth_--;
-			return;
+		} else {
+			write(group);
 		}
+		// Done with it, so free it: the parser would otherwise hold the whole file in memory
+		if (parent_group) {
+			parent_group->deleteSubgroup(group);
+		}
+	}
+
+	// Writes the rest of the current group's JSON (attributes, names, variables, defines) and closes it
+	void write(const LibertyGroup *group) {
 		if (stack_top().subgroups_) {
 			out_.end_array();
 		}
