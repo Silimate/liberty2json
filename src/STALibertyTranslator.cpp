@@ -139,7 +139,6 @@ struct Visitor final: public LibertyGroupVisitor {
 	}
 
 	void end(const LibertyGroup *group, LibertyGroup *parent_group) override {
-		(void) parent_group;
 		if (stack_top().subgroups_) {
 			out_.end_array();
 		}
@@ -200,6 +199,10 @@ struct Visitor final: public LibertyGroupVisitor {
 		out_.end_object();
 		stack_.pop();
 		out_.flush();
+		// Written out, so free it: the parser would otherwise hold the whole file in memory
+		if (parent_group) {
+			parent_group->deleteSubgroup(group);
+		}
 	}
 
 	void makeOrAppendDefine(
