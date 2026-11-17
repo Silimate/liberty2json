@@ -26,6 +26,7 @@
 #include <optional>
 #include <filesystem>
 #include <memory>
+#include <vector>
 
 using string = std::string;
 
@@ -37,7 +38,7 @@ class STALibertyTranslator: public sta::Report {
 		std::filesystem::path filename_;
 		std::optional<string> err_ = std::nullopt;
 	public:
-		STALibertyTranslator(string filename, std::ostream* out_stream, bool include_src_attributes = false);
+		STALibertyTranslator(string filename, std::ostream* out_stream, bool include_src_attributes = false, const std::vector<string> &skip_groups = {});
 		
 		// LibertyParser
 		~STALibertyTranslator() override;
