@@ -27,6 +27,7 @@
 #include <stack>
 #include <cstdlib>
 #include <map>
+#include <set>
 
 using namespace sta;
 using namespace std::literals::string_literals;
@@ -35,6 +36,9 @@ struct Visitor final: public LibertyGroupVisitor {
 	std::filesystem::path src_;
 	jsoncons::json_stream_encoder out_;
 	bool include_src_attributes_;
+	std::set<string> skip_groups_;
+	// Nesting depth inside a skipped group; nothing is written while non-zero
+	int skip_depth_ = 0;
 	
 	struct Variable {
 		string name_;
@@ -95,11 +99,13 @@ struct Visitor final: public LibertyGroupVisitor {
 	Visitor(
 		std::filesystem::path src,
 		std::ostream *out_stream,
-		bool include_src_attributes
+		bool include_src_attributes,
+		const std::vector<string> &skip_groups
 	):
 		src_(src),
 		out_(*out_stream),
-		include_src_attributes_(include_src_attributes)
+		include_src_attributes_(include_src_attributes),
+		skip_groups_(skip_groups.begin(), skip_groups.end())
 	{}
 	
 	~Visitor() {}
@@ -127,6 +133,10 @@ struct Visitor final: public LibertyGroupVisitor {
 	
 	void begin(const LibertyGroup *group, LibertyGroup *parent_group) override {
 		(void) parent_group;
+		if (skip_depth_ || skip_groups_.count(group->type())) {
+			skip_depth_++;
+			return;
+		}
 		if (stack_.size() && !stack_.top().subgroups_) {
 			stack_.top().subgroups_ = true;
 			out_.key("groups");
@@ -140,6 +150,10 @@ struct Visitor final: public LibertyGroupVisitor {
 
 	void end(const LibertyGroup *group, LibertyGroup *parent_group) override {
 		(void) parent_group;
+		if (skip_depth_) {
+			skip_depth_--;
+			return;
+		}
 		if (stack_top().subgroups_) {
 			out_.end_array();
 		}
@@ -222,11 +236,17 @@ struct Visitor final: public LibertyGroupVisitor {
 	}
 
 	void visitAttr(const LibertySimpleAttr *attr) override {
+		if (skip_depth_) {
+			return;
+		}
 		const auto &value = attr->value();
 		stack_top().attrs_[attr->name()] = valueAsJson(&value);
 	}
 
 	void visitAttr(const LibertyComplexAttr *attr) override {
+		if (skip_depth_) {
+			return;
+		}
 		const auto &values = attr->values();
 		if (attr->name() == "define_group") {
 			if (values.empty()) {
@@ -258,6 +278,9 @@ struct Visitor final: public LibertyGroupVisitor {
 	}
 
 	void visitVariable(LibertyVariable *variable) override {
+		if (skip_depth_) {
+			return;
+		}
 		stack_top().variables_.push_back({
 				variable->variable(),
 				variable->value()
@@ -265,6 +288,9 @@ struct Visitor final: public LibertyGroupVisitor {
 	}
 
 	void visitDefine(LibertyDefine *define) override {
+		if (skip_depth_) {
+			return;
+		}
 		auto groupTypeRaw = string(define->groupTypeRaw());
 		makeOrAppendDefine(
 			define->name(),
@@ -277,9 +303,10 @@ struct Visitor final: public LibertyGroupVisitor {
 STALibertyTranslator::STALibertyTranslator(
 	string filename,
 	std::ostream *out_stream,
-	bool include_src_attributes
+	bool include_src_attributes,
+	const std::vector<string> &skip_groups
 ): filename_(filename) {
-	visitor_ = std::unique_ptr<Visitor>(new Visitor(filename, out_stream, include_src_attributes));
+	visitor_ = std::unique_ptr<Visitor>(new Visitor(filename, out_stream, include_src_attributes, skip_groups));
 	try {
 		parseLibertyFile(filename_.c_str(), visitor_.get(), this);
 	} catch (sta::Exception &e) {
