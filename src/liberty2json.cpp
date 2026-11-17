@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
 	program.add_argument("--debug").help("enable debug mode").flag();
 	program.add_argument("--indent").help("has no effect and is kept for backwards compatibility").flag();
 	program.add_argument("--src").help("include source attribute in top-level groups").flag();
-	program.add_argument("--skip-group").help("leave out groups of this type and everything inside them").append().default_value(std::vector<string>{}).nargs(1);
+	program.add_argument("--skip-group").help("leave out groups of this type and everything inside them").append();
 
 	try {
 		program.parse_args(argc, argv);

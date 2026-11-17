@@ -64,3 +64,18 @@ def test_skip_group():
             "names": ["skip_group_tests"],
         }
     }, "unexpected stdout"
+
+
+def test_skip_group_missing_value():
+    p = subprocess.run(
+        [
+            str(pytest.l2j),
+            str(pytest.test_root / "test_skip_group.lib"),
+            "--skip-group",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        encoding="utf8",
+    )
+    assert p.returncode != 0, "trailing --skip-group without a value was accepted"
+    assert "Too few arguments for '--skip-group'" in p.stderr, "unexpected stderr"
