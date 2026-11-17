@@ -160,6 +160,7 @@ struct Visitor final: public LibertyGroupVisitor {
 		}
 	}
 
+	// Writes the rest of the current group's JSON (attributes, names, variables, defines) and closes it
 	void write(const LibertyGroup *group) {
 		if (stack_top().subgroups_) {
 			out_.end_array();
