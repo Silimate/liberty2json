@@ -40,6 +40,7 @@ int main(int argc, char *argv[]) {
 	program.add_argument("--debug").help("enable debug mode").flag();
 	program.add_argument("--indent").help("has no effect and is kept for backwards compatibility").flag();
 	program.add_argument("--src").help("include source attribute in top-level groups").flag();
+	program.add_argument("--skip-group").help("leave out groups of this type and everything inside them").append();
 
 	try {
 		program.parse_args(argc, argv);
@@ -74,7 +75,8 @@ int main(int argc, char *argv[]) {
 	auto parser = std::make_shared<STALibertyTranslator>(
 		program.get<string>("filename"),
 		out_stream,
-		program.get<bool>("--src")
+		program.get<bool>("--src"),
+		program.get<std::vector<string>>("--skip-group")
 	);
 	
 	if (parser->check()) {

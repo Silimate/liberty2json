@@ -1,0 +1,38 @@
+library(skip_group_tests) {
+  lu_table_template(delay_template) {
+    variable_1 : input_net_transition;
+    index_1("0.1, 0.2");
+  }
+  cell(INV) {
+    area : 1;
+    pin(A) {
+      direction : input;
+      internal_power() {
+        rise_power(scalar) {
+          values("0.1");
+        }
+      }
+      hyperbolic_noise_low() {
+        height_coefficient : 0.5;
+      }
+      capacitance : 0.25;
+    }
+    pin(Y) {
+      direction : output;
+      function : "!A";
+      timing() {
+        related_pin : "A";
+        cell_rise(delay_template) {
+          values("0.1, 0.2");
+        }
+      }
+      internal_power() {
+        related_pin : "A";
+      }
+      max_capacitance : 0.5;
+    }
+    leakage_power() {
+      value : 0.125;
+    }
+  }
+}
