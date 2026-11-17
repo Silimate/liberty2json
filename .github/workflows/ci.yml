@@ -88,8 +88,8 @@ jobs:
       - if: ${{ matrix.os.family == 'linux' }}
         name: Cudd (Linux)
         run: |
-          curl -L https://raw.githubusercontent.com/davidkebo/cudd/main/cudd_versions/cudd-3.0.0.tar.gz | tar -xzvC .
-          cd cudd-3.0.0
+          curl -L https://github.com/silimate/cudd/archive/cudd-3.0.0.tar.gz | tar -xzvC .
+          cd cudd-cudd-3.0.0
           ./configure
           make -j$(nproc)
           sudo make install

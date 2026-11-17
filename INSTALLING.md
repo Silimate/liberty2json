@@ -32,7 +32,7 @@ sudo apt-get install -y \
 	autotools-dev
 
 mkdir ~/cudd
-curl -L https://raw.githubusercontent.com/davidkebo/cudd/main/cudd_versions/cudd-3.0.0.tar.gz | tar -xzvC ~/cudd --strip-components=1
+curl -L https://github.com/silimate/cudd/archive/cudd-3.0.0.tar.gz | tar -xzvC ~/cudd --strip-components=1
 cd ~/cudd
 ./configure
 make -j$(nproc)
