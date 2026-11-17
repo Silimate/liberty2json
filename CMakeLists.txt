@@ -16,6 +16,14 @@ if (UNIX)
   endif()
 endif()
 
+# Fall back to RELEASE when no build type is given
+if (NOT CMAKE_BUILD_TYPE)
+  message(WARNING "Build type not set, falling back to RELEASE mode.
+ To specify build type use:
+ -DCMAKE_BUILD_TYPE=<mode> where <mode> is DEBUG or RELEASE.")
+  set(CMAKE_BUILD_TYPE "RELEASE" CACHE STRING "Choose the type of build, options are: DEBUG RELEASE." FORCE)
+endif()
+
 set(CMAKE_CXX_FLAGS_DEBUG
 "${CMAKE_CXX_FLAGS_DEBUG} -Wall -O0 -g"
 )
